@@ -23,7 +23,7 @@ videoBindInfoTuple = namedtuple('videoBindInfoTuple', 'episodeId, animeId, anime
 def checkIfVideo(file_path: str) -> bool:
     try:
         guess = mimetypes.guess_type(file_path)[0]
-        if not guess is None:
+        if guess is not None:
             return guess.startswith('video')
         return False
     except FileNotFoundError:
@@ -39,7 +39,7 @@ def fiddlerVideosFromFiles(files: Iterable) -> Tuple[Tuple, Tuple]:
 def fiddlerExistVideoPaths(video_paths: Iterable) -> Tuple:
     '''input: a list of file path\n
     output: a Tuple of video_paths which not in the DB'''
-    exists = set([exist_path[2] for exist_path in getAllVideos()])
+    exists = {exist_path[2] for exist_path in getAllVideos()}
     return tuple(paths for paths in video_paths if paths not in exists)
 
 
