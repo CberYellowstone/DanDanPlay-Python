@@ -23,9 +23,7 @@ videoBindInfoTuple = namedtuple('videoBindInfoTuple', 'hash, animeId, episodeId,
 def checkIfVideo(file_path: str) -> bool:
     try:
         guess = mimetypes.guess_type(file_path)[0]
-        if guess is not None:
-            return guess.startswith('video')
-        return False
+        return guess.startswith('video') if guess is not None else False
     except FileNotFoundError:
         return False
 
