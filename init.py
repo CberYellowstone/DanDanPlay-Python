@@ -8,12 +8,13 @@ def delAll():
         os.remove(DB_PATH)
 
 def initFolder():
-    if os.path.exists(DANMU_PATH) and not os.path.isdir(DANMU_PATH):
-        # TODO: Logging
-        os.replace(DANMU_PATH, f'{DANMU_PATH}.bak')
-    with contextlib.suppress(FileExistsError):
-        os.mkdir(os.path.join(DANMU_PATH))
+    for each_path in DANMU_PATH, THUMBNAIL_PATH:
+        if os.path.exists(each_path) and not os.path.isdir(each_path):
+            # TODO: Logging
+            os.replace(each_path, f'{each_path}.bak')
+        with contextlib.suppress(FileExistsError):
+            os.mkdir(os.path.join(each_path))
 
-
-initDB()
-initFolder()
+if __name__ == '__main__':
+    initDB()
+    initFolder()

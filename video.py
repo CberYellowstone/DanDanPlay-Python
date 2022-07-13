@@ -1,23 +1,23 @@
-from collections import namedtuple
-import mimetypes
-from typing import Any, Tuple, Union, Iterable, Generator
-from database import *
-from config import *
 import hashlib
+import mimetypes
 import os
-from pymediainfo import MediaInfo
-from var_dump import var_dump
-# import cv2
-import requests
 import pathlib
-import json
-import tqdm
+import subprocess
+import threading
+import time
+from collections import namedtuple
+from typing import Iterable, Sequence, Tuple, Union
 
-import urllib3
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+import tqdm
+from pymediainfo import MediaInfo
+# from var_dump import var_dump
+
+from config import *
+from database import *
+from unit import universeThread
 
 videoBaseInfoTuple = namedtuple('videoBaseInfoTuple', 'hash, fileName, filePath, fileSize, videoDuration')
-videoBindInfoTuple = namedtuple('videoBindInfoTuple', 'episodeId, animeId, animeTitle, episodeTitle, type, typeDescription, shift', defaults=[0])
+videoBindInfoTuple = namedtuple('videoBindInfoTuple', 'hash, animeId, episodeId, animeTitle, episodeTitle, type, typeDescription')
 
 
 def checkIfVideo(file_path: str) -> bool:
@@ -79,111 +79,74 @@ def getFileSize(path):
         return -1
 
 
-def vaildJSON(json_str: str) -> bool:
-    try:
-        json.loads(json_str)
-        return True
-    except json.JSONDecodeError:
-        return False
+def getVideosFromPath(folderPath: str) -> List:
+    '''Return a list of video file names in the path, including subfolders'''
+    file_list: List[str] = []
+    for root, _, files in os.walk(folderPath):
+        file_list += (os.path.join(root, path) for path in files if checkIfVideo(os.path.join(root, path)))
+    return file_list
 
-
-def queryDandanPlay(video_path: str) -> Tuple[bool, Any]:
-    '''If matched, return a tuple of (True, videoBindInfoTuple),\n 
-    otherwise return a tuple of (False, Tuple[videoBindInfoTuple])
-    '''
-    _apiurl = 'https://api.acplay.net/api/v2/match'
-    _data = {
-        "fileName": getFileName(video_path),
-        "fileHash": getVideoHash(video_path),
-        "fileSize": getFileSize(video_path),
-        "videoDuration": getVideoDuration(video_path),
-        "matchMode": "hashAndFileName"
-    }
-    for _ in range(3):
-        #TODO: Logging
-        try:
-            _context = requests.post(
-                _apiurl, json=_data, verify=False, timeout=10)
-            break
-        except requests.exceptions.ConnectTimeout:
-            continue
-    else:
-        return False, None
-    _dict = _context.json()
-    if not _dict['success']:
-        raise LookupError(_dict['errorMessage'])
-    if _dict['isMatched']:
-        return True, videoBindInfoTuple(**_dict['matches'][0])
-    else:
-        return False, tuple(videoBindInfoTuple(**eachMatch) for eachMatch in _dict['matches'])
-
-
-def pushVideoBaseInfo2DB(video_path: Union[str, Iterable], path_is_prechecked: bool = False, show_progress: bool = False) -> Tuple[bool, Union[str, Iterable, None]]:
+def pushVideoBaseInfo2DB(video_path: Union[str, Sequence[str]], path_is_prechecked: bool = False, show_progress: bool = False) -> Tuple[bool, Tuple]:
     '''video_path can be a string of single path or a list of path\n
     If success, return True, otherwise return False, and the failed path(s)'''
     if isinstance(video_path, str):
-        if not path_is_prechecked and not checkIfVideo(video_path):
-            return False, video_path
-        _hash = getVideoHash(video_path)
-        _duration = getVideoDuration(video_path)
-        _filename = getFileName(video_path)
-        _size = getFileSize(video_path)
-        addVideoIntoDB(_hash, _filename, video_path, f'{_size}', f'{_duration}')
-        return True, None
+        video_path = (video_path,)
+    video_path = fiddlerExistVideoPaths(video_path)
+    if not path_is_prechecked:
+        video_path, faild_path = fiddlerVideosFromFiles(video_path)
     else:
-        video_path = fiddlerExistVideoPaths(video_path)
-        if not path_is_prechecked:
-            video_path, faild_path = fiddlerVideosFromFiles(video_path)
-        else:
-            faild_path = ()
-        information_list: List[Tuple[str, str, str, str, str]] = []
+        faild_path = ()
+    information_list: List[Tuple[str, str, str, str, str]] = []
+    if show_progress:
+        video_path = tqdm.tqdm(video_path)
+    for each_path in video_path:
+        _hash = getVideoHash(each_path)
+        # _hash = ''
+        _duration = getVideoDuration(each_path)
+        _filename = getFileName(each_path)
+        _size = getFileSize(each_path)
+        information_list.append(
+            (_hash, _filename, each_path, f'{_size}', f'{_duration}'))
         if show_progress:
-            video_path = tqdm.tqdm(video_path)
-        for each_path in video_path:
-            _hash = getVideoHash(each_path)
-            # _hash = ''
-            _duration = getVideoDuration(each_path)
-            _filename = getFileName(each_path)
-            _size = getFileSize(each_path)
-            information_list.append(
-                (_hash, _filename, each_path, f'{_size}', f'{_duration}'))
+            video_path.set_description(f'{_filename}')  # type: ignore
+    addVideosIntoDB(information_list)
+    return not bool(faild_path), faild_path
+
+
+def multiThreadCreateThumbnail(_videoBaseInfoTuples:Sequence[videoBaseInfoTuple], size:str = '400*225', show_progress:bool = False, cover:bool = False) -> None:
+    locks = [threading.Lock() for _ in range(THUMBNAIL_THREAD_NUM)]
+    tqdm_obj = tqdm.tqdm(_videoBaseInfoTuples) if show_progress else None
+    for eachTuple in _videoBaseInfoTuples:
+        img_path = os.path.join(THUMBNAIL_PATH, f'{eachTuple.hash}{THUMBNAIL_SUFFIX}')
+        if(not cover and os.path.exists(img_path)):
             if show_progress:
-                video_path.set_description(f'{_filename}')  # type: ignore
-        addVideosIntoDB(information_list)
-        return not bool(faild_path), faild_path
-
-# TODO: Add Logging
-
-
-def bindVideosIfIsMatched() -> Tuple[tuple, tuple]:
-    '''Try to search the not-binded videos in the DB,\n
-    if Dandanplay API return a 'isMatched' flag,\n
-    then auto bind the video. Otherwise, return it in the not-binded videos.
-    Returns: Tuple[Tuple[videoBaseInfoTuple, videoBindInfoTuple], Tuple[videoBaseInfoTuple, Tuple[videoBindInfoTuple]]]
-    '''
-    binded_videos = []
-    need_manual_bind_videos = []
-    for each_video_baseinfo in (videoBaseInfoTuple._make(eachBaseInfo) for eachBaseInfo in getAllUnBindedVideos()):
-        _is_matched, _matches = queryDandanPlay(each_video_baseinfo.filePath)
-        if _is_matched:
-            binded_videos.append((each_video_baseinfo, _matches))
-            addBindingIntoDB(each_video_baseinfo.hash, _matches.animeId, _matches.animeTitle, _matches.episodeId, _matches.episodeTitle, _matches.type, _matches.typeDescription)
-        else:
-            need_manual_bind_videos.append((each_video_baseinfo, _matches))
-    return tuple(binded_videos), tuple(need_manual_bind_videos)
+                tqdm_obj.set_description(f'{eachTuple.fileName}')
+                tqdm_obj.update()
+            continue
+        video_path:str = eachTuple.filePath
+        timing:int = int(float(eachTuple.videoDuration)/5)
+        args = [FFMPEG_PATH, '-loglevel', 'quiet', '-ss', f'{timing}', '-i', video_path, '-y', '-f', THUMBNAIL_FORMAT, '-t', '1', '-r', '1', '-s', size, img_path]
+        while all(lock.locked() for lock in locks):
+            time.sleep(0.1)
+        lock = [lock for lock in locks if not lock.locked()][0]
+        universeThread(eachTuple.fileName, subprocess.run, lock, args, tqdm_obj=tqdm_obj).start()
+    [lock.acquire(blocking=True) for lock in locks]
 
 
-def downloadDanmuFromDandanPlay(episodeId: int, _from: int = 0, with_related: bool = True, ch_convert: int = 1) -> bool:
-    '''Download danmu from Dandanplay,\n
-    with_related: If True, download related danmu.\n
-    ch_convert: 0: no convert, 1: convert to simple chinese, 2: convert to traditional chinese
-    '''
-    danmu_file_path = os.path.join(DANMU_PATH, f'{episodeId}.json')
-    # TODO: Add Logging
-    _apiurl = f'https://api.acplay.net/api/v2/comment/{episodeId}?from={_from}&withRelated={with_related}&chConvert={ch_convert}'
-    _context = requests.get(_apiurl, verify=False).content.decode('utf-8')
-    if not vaildJSON(_context):
-        return False
-    with open(danmu_file_path, 'w', encoding='utf-8') as f:
-        f.write(_context)
-    return True
+def createThumbnail(_videoBaseInfoTuple: Union[videoBaseInfoTuple, Sequence[videoBaseInfoTuple]], size:str = '400*225', show_progress:bool = False, cover:bool = False) -> None:
+    if(isinstance(_videoBaseInfoTuple, videoBaseInfoTuple)):
+        _videoBaseInfoTuple = (_videoBaseInfoTuple,)
+    if show_progress:
+        _videoBaseInfoTuple = tqdm.tqdm(_videoBaseInfoTuple)
+    if THUMBNAIL_THREAD_NUM == 1:
+        for eachTuple in _videoBaseInfoTuple:
+            if show_progress:
+                _videoBaseInfoTuple.set_description(f'{eachTuple.fileName}')# type: ignore
+            img_path = os.path.join(THUMBNAIL_PATH, f'{eachTuple.hash}{THUMBNAIL_SUFFIX}')
+            if(not cover and os.path.exists(img_path)):
+                continue
+            video_path:str = eachTuple.filePath
+            timing:int = int(float(eachTuple.videoDuration)/5)
+            subprocess.call([FFMPEG_PATH, '-loglevel', 'quiet', '-ss', f'{timing}', '-i', video_path, '-y', '-f', THUMBNAIL_FORMAT, '-t', '1', '-r', '1', '-s', size, img_path])
+    else:
+        multiThreadCreateThumbnail(_videoBaseInfoTuple, size, show_progress, cover)

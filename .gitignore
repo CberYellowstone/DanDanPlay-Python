@@ -131,3 +131,5 @@ dmypy.json
 
 .vscode/
 test/
+*.sqlite3
+data

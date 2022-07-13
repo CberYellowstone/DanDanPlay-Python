@@ -1,9 +1,10 @@
-from typing import Iterable, List, Tuple, Union
+from typing import List, Optional, Sequence, Tuple
 from config import *
 import sqlite3
 from contextlib import closing
 
 
+# TODO:last_watch_time
 def initDB():
     if os.path.exists(DB_PATH):
         return
@@ -27,7 +28,7 @@ def addVideoIntoDB(hash: str, fileName: str, filePath: str, fileSize: str, video
             connection.commit()
 
 
-def addVideosIntoDB(videos: Iterable[Tuple[str, str, str, str, str]]) -> None:
+def addVideosIntoDB(videos: Sequence[Tuple[str, str, str, str, str]]) -> None:
     '''eachTuple: [0] hash: str, [1] fileName: str, [2] filePath: str, [3] fileSize: str, [4] videoDuration: str'''
     with closing(sqlite3.connect(DB_PATH)) as connection:
         with closing(connection.cursor()) as cursor:
@@ -41,7 +42,15 @@ def addBindingIntoDB(hash: str, animeId: int, episodeId: int, animeTitle: str, e
             cursor.execute("INSERT OR IGNORE INTO Binding VALUES (?, ?, ?, ?, ?, ?, ?)", (hash, animeId, episodeId, animeTitle, episodeTitle, type, typeDescription))
             connection.commit()
 
-def getVideoFromDB(hash: str) -> Union[Tuple[str, str, str, str, str], None]:
+def addBindingsIntoDB(bindings: Sequence[Tuple[str, int, int, str, str, str, str]]) -> None:
+    '''eachTuple: [0] hash, [1] animeId, [2] episodeId, [3] animeTitle, [4] episodeTitle, [5] type, [6] typeDescription'''
+    with closing(sqlite3.connect(DB_PATH)) as connection:
+        with closing(connection.cursor()) as cursor:
+            for binding in bindings:
+                cursor.execute("INSERT OR IGNORE INTO Binding VALUES (?, ?, ?, ?, ?, ?, ?)", binding)
+            connection.commit()
+
+def getVideoFromDB(hash: str) -> Optional[Tuple[str, str, str, str, str]]:
     '''[0] hash, [1] fileName, [2] filePath, [3] fileSize, [4] videoDuration'''
     with closing(sqlite3.connect(DB_PATH)) as connection:
         with closing(connection.cursor()) as cursor:
