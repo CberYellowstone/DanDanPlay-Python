@@ -1,3 +1,4 @@
+from collections import namedtuple
 import json
 import threading
 from typing import Callable, Optional
@@ -5,13 +6,8 @@ from typing import Callable, Optional
 import tqdm
 # from var_dump import var_dump
 
-
-def vaildJSON(json_str: str) -> bool:
-    try:
-        json.loads(json_str)
-        return True
-    except json.JSONDecodeError:
-        return False
+videoBaseInfoTuple = namedtuple('videoBaseInfoTuple', 'hash, fileName, filePath, fileSize, videoDuration')
+videoBindInfoTuple = namedtuple('videoBindInfoTuple', 'animeId, episodeId, animeTitle, episodeTitle, type, typeDescription, shift', defaults=(0,))
 
 
 class universeThread(threading.Thread):

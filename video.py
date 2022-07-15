@@ -5,22 +5,22 @@ import pathlib
 import subprocess
 import threading
 import time
-from collections import namedtuple
-from typing import Iterable, Sequence, Tuple, Union
+from typing import Iterable, List, Sequence, Tuple, Union
 
 import tqdm
 from pymediainfo import MediaInfo
-# from var_dump import var_dump
 
 from config import *
 from database import *
-from unit import universeThread
+from unit import universeThread, videoBaseInfoTuple
 
-videoBaseInfoTuple = namedtuple('videoBaseInfoTuple', 'hash, fileName, filePath, fileSize, videoDuration')
-videoBindInfoTuple = namedtuple('videoBindInfoTuple', 'hash, animeId, episodeId, animeTitle, episodeTitle, type, typeDescription')
+# from var_dump import var_dump
+
 
 
 def checkIfVideo(file_path: str) -> bool:
+    if not os.path.isfile(file_path):
+        return False
     try:
         guess = mimetypes.guess_type(file_path)[0]
         return guess.startswith('video') if guess is not None else False
@@ -57,7 +57,6 @@ def getVideoDuration(video_path: str) -> int:
         _videoinfo = MediaInfo.parse(video_path)
     except FileNotFoundError:
         return -1
-    # var_dump(_videoinfo.video_tracks[0].duration)
     return int(float(_videoinfo.video_tracks[0].duration)/1000)
 
 
@@ -77,16 +76,44 @@ def getFileSize(path):
         return -1
 
 
-def getVideosFromPath(folderPath: str) -> List:
+def getVideoBasicInformation(each_path: str, callback_list:list = None) -> Tuple[str, str, str, str]:
+    '''Return a tuple of (hash, duration, size)'''
+    _hash = getVideoHash(each_path)
+    _duration = getVideoDuration(each_path)
+    _filename = getFileName(each_path)
+    _size = getFileSize(each_path)
+    if callback_list is not None:
+        callback_list.append((_hash, _filename, each_path, f'{_size}', f'{_duration}'))
+    return _hash, f'{_duration}', _filename, f'{_size}'
+
+
+def getVideosFromPath(folderPath: str) -> List[str]:
     '''Return a list of video file names in the path, including subfolders'''
     file_list: List[str] = []
     for root, _, files in os.walk(folderPath):
         file_list += (os.path.join(root, path) for path in files if checkIfVideo(os.path.join(root, path)))
     return file_list
 
-def pushVideoBaseInfo2DB(video_path: Union[str, Sequence[str]], path_is_prechecked: bool = False, show_progress: bool = False) -> Tuple[bool, Tuple]:
+def mulitThreadPushVideoBaseInfo2DB(video_paths:Sequence[str], tqdm_obj:Optional[tqdm.tqdm]) -> Tuple[Tuple[str, str, str, str, str], ...]:
+    information_list:List[Tuple[str, str, str, str, str]] = []
+    locks = [threading.Lock() for _ in range(PUSH_VIDEO_THREAD_NUM)]
+    for each_path in video_paths:
+        while all(lock.locked() for lock in locks):
+            time.sleep(0.1)
+        lock = [lock for lock in locks if not lock.locked()][0]
+        _filename = getFileName(each_path)
+        universeThread(_filename, getVideoBasicInformation, lock, each_path, callback_list=information_list, tqdm_obj=tqdm_obj).start()
+    [lock.acquire(blocking=True) for lock in locks]
+    return tuple(information_list)
+
+def pushVideoBaseInfo2DB(video_path: Union[str, Sequence[str]], path_is_prechecked: bool = False, show_progress: bool = False, is_dir: bool = False) -> Tuple[bool, Tuple]:
     '''video_path can be a string of single path or a list of path\n
     If success, return True, otherwise return False, and the failed path(s)'''
+    if is_dir:
+        if isinstance(video_path, str):
+            video_path = (video_path,)
+        video_path = [each_video_path for each_dir in video_path for each_video_path in getVideosFromPath(each_dir)]# type: ignore
+        path_is_prechecked = True
     if isinstance(video_path, str):
         video_path = (video_path,)
     video_path = fiddlerExistVideoPaths(video_path)
@@ -94,19 +121,17 @@ def pushVideoBaseInfo2DB(video_path: Union[str, Sequence[str]], path_is_precheck
         video_path, faild_path = fiddlerVideosFromFiles(video_path)
     else:
         faild_path = ()
-    information_list: List[Tuple[str, str, str, str, str]] = []
-    if show_progress:
-        video_path = tqdm.tqdm(video_path)
-    for each_path in video_path:
-        _hash = getVideoHash(each_path)
-        # _hash = ''
-        _duration = getVideoDuration(each_path)
-        _filename = getFileName(each_path)
-        _size = getFileSize(each_path)
-        information_list.append(
-            (_hash, _filename, each_path, f'{_size}', f'{_duration}'))
-        if show_progress:
-            video_path.set_description(f'{_filename}')  # type: ignore
+    tqdm_obj = tqdm.tqdm(video_path) if show_progress else None
+    if PUSH_VIDEO_THREAD_NUM == 1:
+        information_list: List[Tuple[str, str, str, str, str]] = []
+        for each_path in video_path:
+            _hash, _duration, _filename, _size = getVideoBasicInformation(each_path)
+            information_list.append((_hash, _filename, each_path, _size, _duration))
+            if show_progress:
+                tqdm_obj.set_description(_filename)
+                tqdm_obj.update()
+    else:
+        information_list = mulitThreadPushVideoBaseInfo2DB(video_path, tqdm_obj)# type: ignore
     addVideosIntoDB(information_list)
     return not bool(faild_path), faild_path
 
@@ -132,7 +157,7 @@ def multiThreadCreateThumbnail(_videoBaseInfoTuples:Sequence[videoBaseInfoTuple]
 
 
 def createThumbnail(_videoBaseInfoTuple: Union[videoBaseInfoTuple, Sequence[videoBaseInfoTuple]], size:str = '400*225', show_progress:bool = False, cover:bool = False) -> None:
-    if(isinstance(_videoBaseInfoTuple, videoBaseInfoTuple)):
+    if isinstance(_videoBaseInfoTuple, videoBaseInfoTuple):
         _videoBaseInfoTuple = (_videoBaseInfoTuple,)
     if show_progress:
         _videoBaseInfoTuple = tqdm.tqdm(_videoBaseInfoTuple)

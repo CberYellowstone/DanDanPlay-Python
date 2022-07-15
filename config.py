@@ -11,7 +11,11 @@ DATA_PATH = 'data'
 DANMU_PATH = 'danmu'
 
 # 弹幕下载使用线程数，若为1则禁用多线程
-DANMU_DOWNLOAD_THREAD_NUM = 1
+DANMU_DOWNLOAD_THREAD_NUM = 8
+
+
+# 视频入库使用线程数，若为1则禁用多线程
+PUSH_VIDEO_THREAD_NUM = 4
 
 
 # 匹配视频使用线程数，若为1则禁用多线程
