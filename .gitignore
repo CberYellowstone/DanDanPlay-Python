@@ -133,3 +133,4 @@ dmypy.json
 test/
 *.sqlite3
 data
+Pipfile.lock

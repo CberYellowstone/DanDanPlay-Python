@@ -1,5 +1,4 @@
 from collections import namedtuple
-import json
 import threading
 from typing import Callable, Optional
 

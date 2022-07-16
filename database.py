@@ -1,3 +1,4 @@
+import time
 from typing import Optional, Sequence, Tuple
 from config import *
 import sqlite3
@@ -80,7 +81,7 @@ def checkIfVideoBinded(hash: str) -> bool:
             cursor.execute("SELECT * FROM Binding WHERE hash=?", (hash,))
             return cursor.fetchone() is None
 
-# TODO: Logic mistake
+
 def getAllBindedVideos() -> Tuple[Tuple[str, videoBindInfoTuple], ...]:
     '''[0] hash, [1] videoBindInfoTuple'''
     with closing(sqlite3.connect(DB_PATH)) as connection:
@@ -102,3 +103,19 @@ def getBindingFromDB(hash: str) -> Optional[videoBindInfoTuple]:
         with closing(connection.cursor()) as cursor:
             cursor.execute("SELECT * FROM Binding WHERE hash=?", (hash,))
             return cursor.fetchone()
+
+
+def getLastWatchTime(hash: str) -> int:
+    with closing(sqlite3.connect(DB_PATH)) as connection:
+        with closing(connection.cursor()) as cursor:
+            cursor.execute("SELECT lastWatchTime FROM Video WHERE hash=?", (hash,))
+            return cursor.fetchone()[0]
+
+
+# time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(1657941885))
+def updateLastWatchTime(hash: str, lastWatchTime: int = time.time().__ceil__()) -> None:
+    with closing(sqlite3.connect(DB_PATH)) as connection:
+        with closing(connection.cursor()) as cursor:
+            cursor.execute("UPDATE Video SET lastWatchTime=? WHERE hash=?", (lastWatchTime, hash))
+            connection.commit()
+
