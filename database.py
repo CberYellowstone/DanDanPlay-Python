@@ -22,9 +22,9 @@ def clearDB(part: str = 'all') -> None:
     '''part: 'all' or 'video' or 'binding'''
     with closing(sqlite3.connect(DB_PATH)) as connection:
         with closing(connection.cursor()) as cursor:
-            if part == 'all' or part == 'video':
+            if part in {'all', 'video'}:
                 cursor.execute("DELETE FROM Video")
-            if part == 'all' or part == 'binding':
+            if part in {'all', 'binding'}:
                 cursor.execute("DELETE FROM Binding")
             connection.commit()
 
@@ -105,9 +105,7 @@ def getBindingFromDB(hash: str) -> Optional[videoBindInfoTuple]:
         with closing(connection.cursor()) as cursor:
             cursor.execute("SELECT * FROM Binding WHERE hash=?", (hash,))
             _fetch = cursor.fetchone()
-            if _fetch is not None:
-                return videoBindInfoTuple(*_fetch[1:])
-            return None
+            return videoBindInfoTuple(*_fetch[1:]) if _fetch is not None else None
 
 
 def getLastWatchTime(hash: str) -> int:

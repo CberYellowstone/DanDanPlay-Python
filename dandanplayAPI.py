@@ -97,20 +97,19 @@ def downloadDanmuFromDandanPlay(_videoBindInfoTuple: Union[videoBindInfoTuple, S
     if isinstance(_videoBindInfoTuple, videoBindInfoTuple):
         _videoBindInfoTuple = (_videoBindInfoTuple,)
 
-    if DANMU_DOWNLOAD_THREAD_NUM == 1:
-        if show_progress:
-            _videoBindInfoTuple = tqdm.tqdm(_videoBindInfoTuple)
-        skips: List[videoBindInfoTuple] = []
-        for eachVideoBindInfoTuple in _videoBindInfoTuple:
-            if show_progress:
-                _videoBindInfoTuple.set_description(f'{eachVideoBindInfoTuple.animeTitle} - {eachVideoBindInfoTuple.episodeTitle}')  # type: ignore
-            danmu_file_path = os.path.join(DANMU_PATH, f'{eachVideoBindInfoTuple.episodeId}.json')
-            if(not update and os.path.exists(danmu_file_path)):
-                continue
-            singleThreadDownloadDanmu(_from, with_related, ch_convert, skips, eachVideoBindInfoTuple, danmu_file_path)
-        return not bool(skips), tuple(skips)
-    else:
+    if DANMU_DOWNLOAD_THREAD_NUM != 1:
         return multiThreadDownloadDanmuFromDandanPlay(_videoBindInfoTuple, _from, with_related, ch_convert, update, show_progress)
+    if show_progress:
+        _videoBindInfoTuple = tqdm.tqdm(_videoBindInfoTuple)
+    skips: List[videoBindInfoTuple] = []
+    for eachVideoBindInfoTuple in _videoBindInfoTuple:
+        if show_progress:
+            _videoBindInfoTuple.set_description(f'{eachVideoBindInfoTuple.animeTitle} - {eachVideoBindInfoTuple.episodeTitle}')  # type: ignore
+        danmu_file_path = os.path.join(DANMU_PATH, f'{eachVideoBindInfoTuple.episodeId}.json')
+        if(not update and os.path.exists(danmu_file_path)):
+            continue
+        singleThreadDownloadDanmu(_from, with_related, ch_convert, skips, eachVideoBindInfoTuple, danmu_file_path)
+    return not bool(skips), tuple(skips)
 
 
 def multiThreadBindVideosIfIsMached(each_video_baseinfo_group: Sequence[videoBaseInfoTuple], tqdm_obj: Optional[tqdm.tqdm] = None) -> Tuple[List[Tuple[str, videoBindInfoTuple]], List[Tuple[videoBaseInfoTuple, videoBindInfoTuple]], List[Tuple[videoBaseInfoTuple, Tuple[videoBindInfoTuple]]]]:

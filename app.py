@@ -15,13 +15,14 @@ def hello_world():
 @app.route('/api/v1/welcome')
 @app.route('/welcome')
 def retuenWelcome():
-    _data = {
+    return {
         "message": "Hello DandanPlay-Python user!",
         "version": VERSION,
-        "time": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time())),
-        "tokenRequired": API_TOKEN_REQUIRED
+        "time": time.strftime(
+            "%Y-%m-%d %H:%M:%S", time.localtime(time.time())
+        ),
+        "tokenRequired": API_TOKEN_REQUIRED,
     }
-    return _data
 
 
 @app.route('/api/v1/playlist')
@@ -58,9 +59,7 @@ def returnLibrary():
 @app.route('/api/v1/image/id/<hash>')
 def returnImage(hash):
     _path = os.path.join(DATA_PATH,THUMBNAIL_PATH,f'{hash}{THUMBNAIL_SUFFIX}')
-    if not os.path.exists(_path):
-        return '', 404
-    return send_file(_path)
+    return send_file(_path) if os.path.exists(_path) else ('', 404)
 
 
 @app.after_request
