@@ -13,6 +13,8 @@ DANMU_PATH = 'danmu'
 # 弹幕下载使用线程数，若为1则禁用多线程
 DANMU_DOWNLOAD_THREAD_NUM = 8
 
+# 弹幕不存在时是否即时获取
+DANMU_INSTANT_GET = True
 
 # 视频入库使用线程数，若为1则禁用多线程
 PUSH_VIDEO_THREAD_NUM = 4
@@ -35,6 +37,9 @@ THUMBNAIL_ENABLE_WEBP = True
 THUMBNAIL_THREAD_NUM = 1
 
 
+# API访问是否需要密钥
+API_TOKEN_REQUIRED = False
+
 
 #-----请勿更改以下部分-----#
 import os
@@ -49,3 +54,6 @@ THUMBNAIL_FORMAT = 'webp' if THUMBNAIL_ENABLE_WEBP else 'mjpeg'
 assert DANMU_DOWNLOAD_THREAD_NUM >= 1, 'DANMU_DOWNLOAD_THREAD_NUM min value must be 1'
 assert isinstance(THUMBNAIL_ENABLE_WEBP, bool), 'THUMBNAIL_ENABLE_WEBP must be bool'
 assert THUMBNAIL_THREAD_NUM >= 1, 'THUMBNAIL_THREAD_NUM min value must be 1'
+
+
+from version import VERSION

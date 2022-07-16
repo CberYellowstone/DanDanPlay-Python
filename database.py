@@ -1,5 +1,7 @@
 import time
 from typing import Optional, Sequence, Tuple
+
+# from var_dump import var_dump
 from config import *
 import sqlite3
 from contextlib import closing
@@ -82,12 +84,12 @@ def checkIfVideoBinded(hash: str) -> bool:
             return cursor.fetchone() is None
 
 
-def getAllBindedVideos() -> Tuple[Tuple[str, videoBindInfoTuple], ...]:
-    '''[0] hash, [1] videoBindInfoTuple'''
+def getAllBindedVideos() -> Tuple[Tuple[videoBaseInfoTuple, videoBindInfoTuple, int], ...]:
+    '''Return: [0] videoBaseInfoTuple, [1] videoBindInfoTuple, [2] lastWatchTime'''
     with closing(sqlite3.connect(DB_PATH)) as connection:
         with closing(connection.cursor()) as cursor:
-            cursor.execute("SELECT * FROM Binding")
-            return tuple((eachTuple[0], videoBindInfoTuple(*(eachTuple[1:]))) for eachTuple in cursor.fetchall())
+            cursor.execute("SELECT * FROM Video JOIN Binding Using(hash)")
+            return tuple((videoBaseInfoTuple(*eachTuple[:5]), videoBindInfoTuple(*eachTuple[-6:]), eachTuple[5]) for eachTuple in cursor.fetchall())
 
 
 def getAllUnBindedVideos() -> Tuple[videoBaseInfoTuple, ...]:
@@ -102,14 +104,17 @@ def getBindingFromDB(hash: str) -> Optional[videoBindInfoTuple]:
     with closing(sqlite3.connect(DB_PATH)) as connection:
         with closing(connection.cursor()) as cursor:
             cursor.execute("SELECT * FROM Binding WHERE hash=?", (hash,))
-            return cursor.fetchone()
+            _fetch = cursor.fetchone()
+            if _fetch is not None:
+                return videoBindInfoTuple(*_fetch[1:])
+            return None
 
 
 def getLastWatchTime(hash: str) -> int:
     with closing(sqlite3.connect(DB_PATH)) as connection:
         with closing(connection.cursor()) as cursor:
             cursor.execute("SELECT lastWatchTime FROM Video WHERE hash=?", (hash,))
-            return cursor.fetchone()[0]
+            return cursor.fetchone()[0] if cursor.fetchone() is not None else -1
 
 
 # time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(1657941885))
@@ -119,3 +124,12 @@ def updateLastWatchTime(hash: str, lastWatchTime: int = time.time().__ceil__()) 
             cursor.execute("UPDATE Video SET lastWatchTime=? WHERE hash=?", (lastWatchTime, hash))
             connection.commit()
 
+def clearBrokenVideo() -> Tuple[videoBaseInfoTuple, ...]:
+    broken_videoBaseInfoTuples = tuple(eachTuple for eachTuple in getAllVideos() if not os.path.exists(eachTuple.filePath))
+    with closing(sqlite3.connect(DB_PATH)) as connection:
+        with closing(connection.cursor()) as cursor:
+            for broken_videoBaseInfoTuples in broken_videoBaseInfoTuples:
+                cursor.execute("DELETE FROM Video WHERE hash=?", (broken_videoBaseInfoTuples.hash,))
+                cursor.execute("DELETE FROM Binding WHERE hash=?", (broken_videoBaseInfoTuples.hash,))
+            connection.commit()
+    return broken_videoBaseInfoTuples
