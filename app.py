@@ -1,22 +1,51 @@
+import functools
 import time
-from flask import Flask, send_file, jsonify
+
+from flask import Flask, jsonify, request, send_file
+from flask_cors import CORS
+# from var_dump import var_dump
+
+from auth import *
 from config import *
-from database import *
-from video import *
 from dandanplayAPI import *
+from database import *
 from unit import *
+from video import *
 
 app = Flask(__name__)
+CORS(app, supports_credentials=True)
+
+
+def return401(*args, **kwargs):
+    return '', 401
+
+def checkAuth(pass_name:bool = False):
+    def checkAuthWrapper(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            # if not API_TOKEN_REQUIRED:
+            #     return func(*args, **kwargs)
+            _token = request.headers.get('Authorization', '').lstrip('Bearer').lstrip()
+            _state, _usernameOrMessage = vaildToken(_token)
+            _state2 = request.args.get('token', '') == ONCE_SECRET
+            if not any((_state, _state2)):
+                return return401(*args, **kwargs)
+            if pass_name:
+                return func(*args, **kwargs, username=_usernameOrMessage)
+            return func(*args, **kwargs)
+        return wrapper
+    return checkAuthWrapper
+
 
 @app.route("/")
-def hello_world():
+def root():
     return "<h1>DanDanPlay-Python is running!</h1>"
 
 @app.route('/api/v1/welcome')
 @app.route('/welcome')
 def retuenWelcome():
     return {
-        "message": "Hello DandanPlay-Python user!",
+        "message": "Hello DandanPlay-Python User!",
         "version": VERSION,
         "time": time.strftime(
             "%Y-%m-%d %H:%M:%S", time.localtime(time.time())
@@ -26,11 +55,13 @@ def retuenWelcome():
 
 
 @app.route('/api/v1/playlist')
+@checkAuth()
 def returnPlaylist():
-    return {}
+    return jsonify({})
 
 
-def generateLibrary():
+def generateLibrary(_hash: Optional[str] = None) -> List[dict]:
+    _bindings = getAllBindedVideos() if _hash is None else getSpecificBindedVideo(_hash)
     default_time = '0001-01-01T00:00:00'
     return [{
                 "AnimeId": eachTuple[1].animeId,
@@ -48,18 +79,27 @@ def generateLibrary():
                 "LastMatch": default_time,
                 "LastPlay": eachTuple[2],
                 "LastThumbnail": None,
-                "Duration": eachTuple[0].videoDuration} for eachTuple in getAllBindedVideos()]
+                "Duration": eachTuple[0].videoDuration} for eachTuple in _bindings]
 
 
 @app.route('/api/v1/library')
+@checkAuth()
 def returnLibrary():
     return jsonify(generateLibrary())
 
-@app.route('/api/v1/library/<hash>')
-@app.route('/api/v1/image/id/<hash>')
-def returnImage(hash):
-    _path = os.path.join(DATA_PATH,THUMBNAIL_PATH,f'{hash}{THUMBNAIL_SUFFIX}')
-    return send_file(_path) if os.path.exists(_path) else ('', 404)
+
+@app.route('/api/v1/image/<_hash>')
+@app.route('/api/v1/image/id/<_hash>')
+def returnImage(_hash):
+    _path = os.path.join(DATA_PATH,THUMBNAIL_PATH,f'{_hash}{THUMBNAIL_SUFFIX}')
+    if not os.path.exists(_path):
+        if not THUMBNAIL_INSTANT_CREATE:
+            return '', 404
+        _videoBaseInfoTuple = getVideoFromDB(_hash)
+        if _videoBaseInfoTuple is None:
+            return '', 404
+        createThumbnail(_videoBaseInfoTuple)
+    return send_file(_path) 
 
 
 @app.after_request
@@ -67,19 +107,19 @@ def after_request(response):
     response.headers.add('Accept-Ranges', 'bytes')
     return response
 
-@app.route('/api/v1/stream/id/<hash>')
-@app.route('/api/v1/stream/<hash>')
-def returnStream(hash):
-    _videoBaseInfoTuple = getVideoFromDB(hash)
-    if _videoBaseInfoTuple is None:
-        return '', 404
-    return send_file(_videoBaseInfoTuple.filePath)
+@app.route('/api/v1/stream/id/<_hash>')
+@app.route('/api/v1/stream/<_hash>')
+@checkAuth()
+def returnStream(_hash):
+    _videoBaseInfoTuple = getVideoFromDB(_hash)
+    return send_file(_videoBaseInfoTuple.filePath) if (_videoBaseInfoTuple is not None) else ('', 404)
 
 
-@app.route('/api/v1/comment/id/<hash>')
-@app.route('/api/v1/comment/<hash>')
-def returnComment(hash):
-    _videoBindInfoTuple = getBindingFromDB(hash)
+@app.route('/api/v1/comment/id/<_hash>')
+@app.route('/api/v1/comment/<_hash>')
+@checkAuth()
+def returnAPIComment(_hash):
+    _videoBindInfoTuple = getBindingFromDB(_hash)
     if _videoBindInfoTuple is None:
         return '', 404
     _path = os.path.join(DATA_PATH,DANMU_PATH,f'{_videoBindInfoTuple.episodeId}.json')
@@ -89,6 +129,53 @@ def returnComment(hash):
         downloadDanmuFromDandanPlay(_videoBindInfoTuple)
     return covertDanmu(_videoBindInfoTuple.episodeId, 'DanDanPlay-Android')
 
+
+@app.route('/api/v1/auth', methods=['POST'])
+def dealAuth():
+    _body = request.get_json()
+    _state, _message = vaildLogin(_body['userName'], _body['password'])
+    if not _state:
+        return jsonify({"id":"","userName":"","token":"","error":_message})
+    return jsonify({"id":generateUUID(_body['userName']),"userName":_body['userName'],"token":generateToken(_body['userName']),"error":""})
+
+
+@app.route('/api/v1/playerconfig/<_hash>')
+@checkAuth()
+def returnPlayConfig(_hash):
+    _videoInfoTuple = getSpecificBindedVideo(_hash)
+    if _videoInfoTuple[0] is None:
+        return '', 404
+    _token_str = f"?token={ONCE_SECRET}"
+    return jsonify({"id": _hash,
+    "video": generateLibrary(_videoInfoTuple[0][0].hash)[0],
+    "videoUrl": f"/api/v1/stream/id/{_hash}{_token_str}",
+    "imageUrl": f"/api/v1/image/id/{_hash}{_token_str}",
+    "vttUrl": f"/api/v1/subtitle/vtt/{_hash}{_token_str}",
+    "color": "#000000",
+    "dmDuration": "9s",
+    "dmSize": "25px",
+    "dmArea": "83%",
+    "videoFiles":[{
+        "id": eachTuple[0].hash,
+        "episodeTitle": eachTuple[1].episodeTitle,
+        "fileName": getFileName(eachTuple[0].filePath, with_extension=True),
+        "isCurrent": eachTuple[0].hash == _hash,
+    } for eachTuple in sorted(getSpecificAnimeBindedVideos(_videoInfoTuple[0][1].animeId), key=lambda x: x[1].episodeId)]})
+
+
+# http://127.0.0.1:4444/api/v1/dplayer/v3/?id=e90fdbfc-541a-41e1-8aac-ef2a82076ca8
+@app.route('/api/v1/dplayer/v3/')
+def returnWebComment():
+    _hash = request.args.get('id', '')
+    _videoBindInfoTuple = getBindingFromDB(_hash)
+    if _videoBindInfoTuple is None:
+        return '', 404
+    _path = os.path.join(DATA_PATH,DANMU_PATH,f'{_videoBindInfoTuple.episodeId}.json')
+    if not os.path.exists(_path):
+        if not DANMU_INSTANT_GET:
+            return '', 404
+        downloadDanmuFromDandanPlay(_videoBindInfoTuple)
+    return covertDanmu(_videoBindInfoTuple.episodeId, 'Web')
 
 
 if __name__ == '__main__':

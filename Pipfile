@@ -10,6 +10,8 @@ opencv-python-headless = "*"
 pymediainfo = "*"
 numpy = "*"
 tqdm = "*"
+flask-cors = "*"
+pyjwt = "*"
 
 [dev-packages]
 black = "*"

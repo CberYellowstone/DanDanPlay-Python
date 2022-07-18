@@ -1,3 +1,5 @@
+import html
+import json
 import threading
 import time
 from typing import List, Sequence, Tuple, Union
@@ -5,11 +7,13 @@ from typing import List, Sequence, Tuple, Union
 import requests
 import tqdm
 import urllib3
-# from var_dump import var_dump
 
 from config import *
 from database import *
 from unit import universeThread, videoBaseInfoTuple, videoBindInfoTuple
+
+# from var_dump import var_dump
+
 
 urllib3.disable_warnings()
 
@@ -30,7 +34,7 @@ def queryDandanPlay(_videoBaseInfoTuple: videoBaseInfoTuple) -> Tuple[bool, Opti
         #TODO: Logging
         try:
             _context = requests.post(_apiurl, json=_data, verify=False)
-            _dict = _context.json()
+            _dict = json.loads(html.unescape(_context.content.decode('utf-8')))
             break
         except requests.exceptions.ConnectTimeout:
             time.sleep(1)

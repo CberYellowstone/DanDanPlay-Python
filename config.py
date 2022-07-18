@@ -36,17 +36,21 @@ THUMBNAIL_ENABLE_WEBP = True
 # 缩略图创建使用线程数，若为1则禁用多线程
 THUMBNAIL_THREAD_NUM = 1
 
+# 缩略图不存在时是否即时创建
+THUMBNAIL_INSTANT_CREATE = True
 
 # API访问是否需要密钥
 API_TOKEN_REQUIRED = False
 
 
 #-----请勿更改以下部分-----#
+import hashlib
 import os
 SELF_PATH = os.path.abspath(os.path.dirname(__file__))
-DB_PATH = os.path.join(SELF_PATH, DATA_PATH, DB_PATH)
-DANMU_PATH = os.path.join(SELF_PATH, DATA_PATH, DANMU_PATH)
-THUMBNAIL_PATH = os.path.join(SELF_PATH, DATA_PATH, THUMBNAIL_PATH)
+DATA_PATH = os.path.join(SELF_PATH, DATA_PATH)
+DB_PATH = os.path.join(DATA_PATH, DB_PATH)
+DANMU_PATH = os.path.join(DATA_PATH, DANMU_PATH)
+THUMBNAIL_PATH = os.path.join(DATA_PATH, THUMBNAIL_PATH)
 THUMBNAIL_SUFFIX = '.webp' if THUMBNAIL_ENABLE_WEBP else '.jpg'
 THUMBNAIL_FORMAT = 'webp' if THUMBNAIL_ENABLE_WEBP else 'mjpeg'
 
@@ -55,5 +59,6 @@ assert DANMU_DOWNLOAD_THREAD_NUM >= 1, 'DANMU_DOWNLOAD_THREAD_NUM min value must
 assert isinstance(THUMBNAIL_ENABLE_WEBP, bool), 'THUMBNAIL_ENABLE_WEBP must be bool'
 assert THUMBNAIL_THREAD_NUM >= 1, 'THUMBNAIL_THREAD_NUM min value must be 1'
 
+ONCE_SECRET = hashlib.md5('t'.encode('utf-8')).hexdigest()
 
 from version import VERSION

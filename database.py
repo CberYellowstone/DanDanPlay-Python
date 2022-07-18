@@ -1,20 +1,19 @@
+import sqlite3
 import time
+from contextlib import closing
 from typing import Optional, Sequence, Tuple
 
 # from var_dump import var_dump
 from config import *
-import sqlite3
-from contextlib import closing
 from unit import videoBaseInfoTuple, videoBindInfoTuple
 
 
 def initDB():
-    if os.path.exists(DB_PATH):
-        return
     with closing(sqlite3.connect(DB_PATH)) as connection:
         with closing(connection.cursor()) as cursor:
             cursor.execute("CREATE TABLE IF NOT EXISTS Video (hash TEXT PRIMARY KEY, fileName TEXT, filePath TEXT, fileSize TEXT, videoDuration TEXT, lastWatchTime INTEGER DEFAULT -1)")
             cursor.execute("CREATE TABLE IF NOT EXISTS Binding (hash TEXT PRIMARY KEY, animeId INTEGER, episodeId INTEGER, animeTitle TEXT, episodeTitle TEXT, type TEXT, typeDescription TEXT)")
+            cursor.execute("CREATE TABLE IF NOT EXISTS Auth (username TEXT PRIMARY KEY, password TEXT)")
             connection.commit()
 
 
@@ -66,7 +65,8 @@ def getVideoFromDB(hash: str) -> Optional[videoBaseInfoTuple]:
     with closing(sqlite3.connect(DB_PATH)) as connection:
         with closing(connection.cursor()) as cursor:
             cursor.execute("SELECT * FROM Video WHERE hash=?", (hash,))
-            return videoBaseInfoTuple._make(cursor.fetchone()[:5])
+            _fetch = cursor.fetchone()
+            return videoBaseInfoTuple._make(_fetch[:5]) if _fetch is not None else None
 
 
 def getAllVideos() -> Tuple[videoBaseInfoTuple, ...]:
@@ -90,6 +90,40 @@ def getAllBindedVideos() -> Tuple[Tuple[videoBaseInfoTuple, videoBindInfoTuple, 
         with closing(connection.cursor()) as cursor:
             cursor.execute("SELECT * FROM Video JOIN Binding Using(hash)")
             return tuple((videoBaseInfoTuple(*eachTuple[:5]), videoBindInfoTuple(*eachTuple[-6:]), eachTuple[5]) for eachTuple in cursor.fetchall())
+
+
+def getSpecificAnimeBindedVideos(animeId: int) -> Tuple[Tuple[videoBaseInfoTuple, videoBindInfoTuple, int], ...]:
+    '''Return: [0] videoBaseInfoTuple, [1] videoBindInfoTuple, [2] lastWatchTime'''
+    with closing(sqlite3.connect(DB_PATH)) as connection:
+        with closing(connection.cursor()) as cursor:
+            cursor.execute("SELECT * FROM Video JOIN Binding Using(hash) WHERE animeId=?", (animeId,))
+            _fetch = cursor.fetchall()
+            if _fetch is None:
+                return ()
+            return tuple((videoBaseInfoTuple(*eachTuple[:5]), videoBindInfoTuple(*eachTuple[-6:]), eachTuple[5]) for eachTuple in _fetch)
+
+
+def getSpecificEpisodeBindedVideos(episodeId: int) -> Tuple[Tuple[videoBaseInfoTuple, videoBindInfoTuple, int], ...]:
+    '''Return: [0] videoBaseInfoTuple, [1] videoBindInfoTuple, [2] lastWatchTime'''
+    with closing(sqlite3.connect(DB_PATH)) as connection:
+        with closing(connection.cursor()) as cursor:
+            cursor.execute("SELECT * FROM Video JOIN Binding Using(hash) WHERE episodeId=?", (episodeId,))
+            _fetch = cursor.fetchall()
+            if _fetch is None:
+                return ()
+            return tuple((videoBaseInfoTuple(*eachTuple[:5]), videoBindInfoTuple(*eachTuple[-6:]), eachTuple[5]) for eachTuple in _fetch)
+
+
+def getSpecificBindedVideo(hash: str) -> Tuple[Tuple[videoBaseInfoTuple, videoBindInfoTuple, int]]:
+    '''Return: [0] videoBaseInfoTuple, [1] videoBindInfoTuple, [2] lastWatchTime'''
+    with closing(sqlite3.connect(DB_PATH)) as connection:
+        with closing(connection.cursor()) as cursor:
+            cursor.execute("SELECT * FROM Video JOIN Binding Using(hash) WHERE hash=?", (hash,))
+            _fetch = cursor.fetchone()
+            if _fetch is None:
+                return ()# type: ignore
+            return (videoBaseInfoTuple(*_fetch[:5]), videoBindInfoTuple(*_fetch[-6:]), _fetch[5]),
+
 
 
 def getAllUnBindedVideos() -> Tuple[videoBaseInfoTuple, ...]:
@@ -122,6 +156,7 @@ def updateLastWatchTime(hash: str, lastWatchTime: int = time.time().__ceil__()) 
             cursor.execute("UPDATE Video SET lastWatchTime=? WHERE hash=?", (lastWatchTime, hash))
             connection.commit()
 
+
 def clearBrokenVideo() -> Tuple[videoBaseInfoTuple, ...]:
     broken_videoBaseInfoTuples = tuple(eachTuple for eachTuple in getAllVideos() if not os.path.exists(eachTuple.filePath))
     with closing(sqlite3.connect(DB_PATH)) as connection:
@@ -129,5 +164,27 @@ def clearBrokenVideo() -> Tuple[videoBaseInfoTuple, ...]:
             for broken_videoBaseInfoTuples in broken_videoBaseInfoTuples:
                 cursor.execute("DELETE FROM Video WHERE hash=?", (broken_videoBaseInfoTuples.hash,))
                 cursor.execute("DELETE FROM Binding WHERE hash=?", (broken_videoBaseInfoTuples.hash,))
+                cursor.execute("DELETE FROM Binding WHERE Binding.hash NOT IN (SELECT Video.hash FROM Video)", (broken_videoBaseInfoTuples.hash,))
             connection.commit()
     return broken_videoBaseInfoTuples
+
+
+def vaildUserIfExists(user: str) -> bool:
+    with closing(sqlite3.connect(DB_PATH)) as connection:
+        with closing(connection.cursor()) as cursor:
+            cursor.execute("SELECT * FROM Auth WHERE username=?", (user,))
+            return cursor.fetchone() is not None
+
+
+def vaildPassword(user: str, password: str) -> bool:
+    with closing(sqlite3.connect(DB_PATH)) as connection:
+        with closing(connection.cursor()) as cursor:
+            cursor.execute("SELECT * FROM Auth WHERE username=? AND password=?", (user, password))
+            return cursor.fetchone() is not None
+
+
+def regUser(user: str, password: str) -> None:
+    with closing(sqlite3.connect(DB_PATH)) as connection:
+        with closing(connection.cursor()) as cursor:
+            cursor.execute("INSERT INTO Auth VALUES (?, ?)", (user, password))
+            connection.commit()

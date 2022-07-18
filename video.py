@@ -156,7 +156,7 @@ def multiThreadCreateThumbnail(_videoBaseInfoTuples:Sequence[videoBaseInfoTuple]
     [lock.acquire(blocking=True) for lock in locks]
 
 
-def createThumbnail(_videoBaseInfoTuple: Union[videoBaseInfoTuple, Sequence[videoBaseInfoTuple]] = [each[0] for each in getAllBindedVideos()], size:str = '400*225', show_progress:bool = False, cover:bool = False) -> None: # type: ignore
+def createThumbnail(_videoBaseInfoTuple: Union[videoBaseInfoTuple, Sequence[videoBaseInfoTuple]] = tuple(each[0] for each in getAllBindedVideos()), size:str = '400*225', show_progress:bool = False, cover:bool = False) -> None: # type: ignore
     if isinstance(_videoBaseInfoTuple, videoBaseInfoTuple):
         _videoBaseInfoTuple = (_videoBaseInfoTuple,)
     if show_progress:

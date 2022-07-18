@@ -5,9 +5,11 @@ from collections import namedtuple
 from typing import Callable, Optional
 
 import tqdm
-# from var_dump import var_dump
 
 from config import *
+
+# from var_dump import var_dump
+
 
 # from var_dump import var_dump
 
@@ -40,7 +42,7 @@ def covert2XML(episodeId: int) -> str:
     ET.SubElement(root, 'ds').text = '931869000'
     ET.SubElement(root, 'de').text = '937654881'
     ET.SubElement(root, 'max_count').text = '8000'
-    with open(os.path.join(DATA_PATH, DANMU_PATH, f'{episodeId}.json'), 'r', encoding='utf-8') as f:
+    with open(os.path.join(DANMU_PATH, f'{episodeId}.json'), 'r', encoding='utf-8') as f:
         _json = json.loads(f.read())
         for eachDanmu in _json['comments']:
             parameters = eachDanmu['p'].split(',')
@@ -48,9 +50,9 @@ def covert2XML(episodeId: int) -> str:
     return ET.tostring(root, encoding="utf-8", xml_declaration=True).decode("utf-8")
 
 def covert2JSON(episodeId: int) -> str:
-    with open(os.path.join(DATA_PATH, DANMU_PATH, f'{episodeId}.json'), 'r', encoding='utf-8') as f:
+    with open(os.path.join(DANMU_PATH, f'{episodeId}.json'), 'r', encoding='utf-8') as f:
         _json = json.loads(f.read())
-        _list = [[float(eachDanmu['p'].split(',')[0]), int(eachDanmu['p'].split(',')[1]), int(eachDanmu['p'].split(',')[2]), eachDanmu['p'].split(',')[3], eachDanmu['m']] for eachDanmu in _json['comments']]
+        _list = [[float(eachDanmu['p'].split(',')[0]), 1 if int(eachDanmu['p'].split(',')[1]) == 5 else 0, int(eachDanmu['p'].split(',')[2]), eachDanmu['p'].split(',')[3], eachDanmu['m']] for eachDanmu in _json['comments']]
         return json.dumps({'code':0, 'data':_list})
 
 def covertDanmu(episodeId: int, type:str) -> str:
