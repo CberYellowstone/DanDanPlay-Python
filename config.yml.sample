@@ -1,0 +1,43 @@
+# ffmpeg可执行文件绝对路径
+FFMPEG_PATH: 'ffmpeg'
+
+DB_PATH: 'ddppy.sqlite'
+
+# 数据存放根路径，绝对路径
+DATA_PATH: '/var/DanDanPlay-Python'
+
+
+# 弹幕文件存放路径，相对于数据根路径
+DANMU_PATH: 'danmu'
+
+# 弹幕下载使用线程数，若为1则禁用多线程
+DANMU_DOWNLOAD_THREAD_NUM: 8
+
+# 弹幕不存在时是否即时获取
+DANMU_INSTANT_GET: True
+
+# 视频入库使用线程数，若为1则禁用多线程
+PUSH_VIDEO_THREAD_NUM: 4
+
+
+# 匹配视频使用线程数，若为1则禁用多线程
+MATCH_VIDEO_THREAD_NUM: 4
+
+# 匹配视频写入数据库合并数，若为1则不合并写入（推荐为匹配线程的3~4倍左右）
+MATCH_VIDEO_SPLIT_NUM: 12
+
+
+# 缩略图存放路径，相对于数据根路径
+THUMBNAIL_PATH: 'thumbnail'
+
+# 缩略图是否使用WebP格式，否则使用JPEG格式
+THUMBNAIL_ENABLE_WEBP: True
+
+# 缩略图创建使用线程数，若为1则禁用多线程
+THUMBNAIL_THREAD_NUM: 1
+
+# 缩略图不存在时是否即时创建
+THUMBNAIL_INSTANT_CREATE: True
+
+# API访问是否需要密钥
+API_TOKEN_REQUIRED: False

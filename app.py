@@ -6,7 +6,7 @@ from flask_cors import CORS
 # from var_dump import var_dump
 
 from auth import *
-from config import *
+from config import CONFIG
 from dandanplayAPI import *
 from database import *
 from unit import *
@@ -23,11 +23,11 @@ def checkAuth(pass_name:bool = False):
     def checkAuthWrapper(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            # if not API_TOKEN_REQUIRED:
-            #     return func(*args, **kwargs)
+            if not CONFIG.API_TOKEN_REQUIRED:
+                return func(*args, **kwargs)
             _token = request.headers.get('Authorization', '').lstrip('Bearer').lstrip()
             _state, _usernameOrMessage = vaildToken(_token)
-            _state2 = request.args.get('token', '') == ONCE_SECRET
+            _state2 = request.args.get('token', '') == CONFIG.ONCE_SECRET
             if not any((_state, _state2)):
                 return return401(*args, **kwargs)
             if pass_name:
@@ -46,11 +46,11 @@ def root():
 def retuenWelcome():
     return {
         "message": "Hello DandanPlay-Python User!",
-        "version": VERSION,
+        "version": CONFIG.VERSION,
         "time": time.strftime(
             "%Y-%m-%d %H:%M:%S", time.localtime(time.time())
         ),
-        "tokenRequired": API_TOKEN_REQUIRED,
+        "tokenRequired": CONFIG.API_TOKEN_REQUIRED,
     }
 
 
@@ -91,9 +91,9 @@ def returnLibrary():
 @app.route('/api/v1/image/<_hash>')
 @app.route('/api/v1/image/id/<_hash>')
 def returnImage(_hash):
-    _path = os.path.join(DATA_PATH,THUMBNAIL_PATH,f'{_hash}{THUMBNAIL_SUFFIX}')
+    _path = os.path.join(CONFIG.DATA_PATH,CONFIG.THUMBNAIL_PATH,f'{_hash}{CONFIG.THUMBNAIL_SUFFIX}')
     if not os.path.exists(_path):
-        if not THUMBNAIL_INSTANT_CREATE:
+        if not CONFIG.THUMBNAIL_INSTANT_CREATE:
             return '', 404
         _videoBaseInfoTuple = getVideoFromDB(_hash)
         if _videoBaseInfoTuple is None:
@@ -122,9 +122,9 @@ def returnAPIComment(_hash):
     _videoBindInfoTuple = getBindingFromDB(_hash)
     if _videoBindInfoTuple is None:
         return '', 404
-    _path = os.path.join(DATA_PATH,DANMU_PATH,f'{_videoBindInfoTuple.episodeId}.json')
+    _path = os.path.join(CONFIG.DATA_PATH,CONFIG.DANMU_PATH,f'{_videoBindInfoTuple.episodeId}.json')
     if not os.path.exists(_path):
-        if not DANMU_INSTANT_GET:
+        if not CONFIG.DANMU_INSTANT_GET:
             return '', 404
         downloadDanmuFromDandanPlay(_videoBindInfoTuple)
     return covertDanmu(_videoBindInfoTuple.episodeId, 'DanDanPlay-Android')
@@ -141,11 +141,11 @@ def dealAuth():
 
 @app.route('/api/v1/playerconfig/<_hash>')
 @checkAuth()
-def returnPlayConfig(_hash):
+def returnPlayCONFIG(_hash):
     _videoInfoTuple = getSpecificBindedVideo(_hash)
     if _videoInfoTuple[0] is None:
         return '', 404
-    _token_str = f"?token={ONCE_SECRET}"
+    _token_str = f"?token={CONFIG.ONCE_SECRET}"
     return jsonify({"id": _hash,
     "video": generateLibrary(_videoInfoTuple[0][0].hash)[0],
     "videoUrl": f"/api/v1/stream/id/{_hash}{_token_str}",
@@ -170,13 +170,15 @@ def returnWebComment():
     _videoBindInfoTuple = getBindingFromDB(_hash)
     if _videoBindInfoTuple is None:
         return '', 404
-    _path = os.path.join(DATA_PATH,DANMU_PATH,f'{_videoBindInfoTuple.episodeId}.json')
+    _path = os.path.join(CONFIG.DATA_PATH,CONFIG.DANMU_PATH,f'{_videoBindInfoTuple.episodeId}.json')
     if not os.path.exists(_path):
-        if not DANMU_INSTANT_GET:
+        if not CONFIG.DANMU_INSTANT_GET:
             return '', 404
         downloadDanmuFromDandanPlay(_videoBindInfoTuple)
     return covertDanmu(_videoBindInfoTuple.episodeId, 'Web')
 
+def run(host:str = '0.0.0.0', port:int = 5000):
+    app.run(host=host, port=port, debug=False, threaded=True)
 
 if __name__ == '__main__':
-    app.run('0.0.0.0', threaded=True)
+    run()

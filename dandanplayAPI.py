@@ -1,15 +1,16 @@
 import html
 import json
+import os
 import threading
 import time
-from typing import List, Sequence, Tuple, Union
+from typing import List, Optional, Sequence, Tuple, Union
 
 import requests
 import tqdm
 import urllib3
 
-from config import *
-from database import *
+from config import CONFIG
+from database import addBindingsIntoDB, getAllUnBindedVideos
 from unit import universeThread, videoBaseInfoTuple, videoBindInfoTuple
 
 # from var_dump import var_dump
@@ -74,11 +75,11 @@ def singleThreadDownloadDanmu(_from: int, with_related:bool, ch_convert:int, ski
 
 
 def multiThreadDownloadDanmuFromDandanPlay(_videoBindInfoTuple:Sequence[videoBindInfoTuple], _from: int, with_related: bool, ch_convert: int, update:bool, show_progress:bool) -> Tuple[bool, Tuple]:
-    locks = [threading.Lock() for _ in range(THUMBNAIL_THREAD_NUM)]
+    locks = [threading.Lock() for _ in range(CONFIG.THUMBNAIL_THREAD_NUM)]
     tqdm_obj = tqdm.tqdm(_videoBindInfoTuple) if show_progress else None
     skips:List[videoBindInfoTuple] = []
     for eachVideoBindInfoTuple in _videoBindInfoTuple:
-        danmu_file_path = os.path.join(DANMU_PATH, f'{eachVideoBindInfoTuple.episodeId}.json')
+        danmu_file_path = os.path.join(CONFIG.DANMU_PATH, f'{eachVideoBindInfoTuple.episodeId}.json')
         _name = f'{eachVideoBindInfoTuple.animeTitle} - {eachVideoBindInfoTuple.episodeTitle}'
         if(not update and os.path.exists(danmu_file_path)):
             if tqdm_obj is not None:
@@ -101,7 +102,7 @@ def downloadDanmuFromDandanPlay(_videoBindInfoTuple: Union[videoBindInfoTuple, S
     if isinstance(_videoBindInfoTuple, videoBindInfoTuple):
         _videoBindInfoTuple = (_videoBindInfoTuple,)
 
-    if DANMU_DOWNLOAD_THREAD_NUM != 1:
+    if CONFIG.DANMU_DOWNLOAD_THREAD_NUM != 1:
         return multiThreadDownloadDanmuFromDandanPlay(_videoBindInfoTuple, _from, with_related, ch_convert, update, show_progress)
     if show_progress:
         _videoBindInfoTuple = tqdm.tqdm(_videoBindInfoTuple)
@@ -109,7 +110,7 @@ def downloadDanmuFromDandanPlay(_videoBindInfoTuple: Union[videoBindInfoTuple, S
     for eachVideoBindInfoTuple in _videoBindInfoTuple:
         if show_progress:
             _videoBindInfoTuple.set_description(f'{eachVideoBindInfoTuple.animeTitle} - {eachVideoBindInfoTuple.episodeTitle}')  # type: ignore
-        danmu_file_path = os.path.join(DANMU_PATH, f'{eachVideoBindInfoTuple.episodeId}.json')
+        danmu_file_path = os.path.join(CONFIG.DANMU_PATH, f'{eachVideoBindInfoTuple.episodeId}.json')
         if(not update and os.path.exists(danmu_file_path)):
             continue
         singleThreadDownloadDanmu(_from, with_related, ch_convert, skips, eachVideoBindInfoTuple, danmu_file_path)
@@ -128,7 +129,7 @@ def multiThreadBindVideosIfIsMached(each_video_baseinfo_group: Sequence[videoBas
     video_bind_infos: List[Tuple[str, videoBindInfoTuple]] = []
     binded_videos: List[Tuple[videoBaseInfoTuple, videoBindInfoTuple]] = []
     need_manual_bind_videos: List[Tuple[videoBaseInfoTuple, Tuple[videoBindInfoTuple]]] = []
-    locks = [threading.Lock() for _ in range(MATCH_VIDEO_THREAD_NUM)]
+    locks = [threading.Lock() for _ in range(CONFIG.MATCH_VIDEO_THREAD_NUM)]
     for each_video_baseinfo in each_video_baseinfo_group:
         while all(lock.locked() for lock in locks):
             time.sleep(0.1)
@@ -151,8 +152,8 @@ def bindVideosIfIsMatched(show_progress=False) -> Tuple[tuple, tuple]:
         eachBaseInfo) for eachBaseInfo in getAllUnBindedVideos()]
     tqdm_obj = tqdm.tqdm(all_videos) if show_progress else None
 
-    for each_video_baseinfo_group in [all_videos[i:i + MATCH_VIDEO_SPLIT_NUM] for i in range(0, len(all_videos), MATCH_VIDEO_SPLIT_NUM)]:
-        if MATCH_VIDEO_THREAD_NUM == 1:
+    for each_video_baseinfo_group in [all_videos[i:i + CONFIG.MATCH_VIDEO_SPLIT_NUM] for i in range(0, len(all_videos), CONFIG.MATCH_VIDEO_SPLIT_NUM)]:
+        if CONFIG.MATCH_VIDEO_THREAD_NUM == 1:
             videoBindInfoTuples: List[Tuple[str, videoBindInfoTuple]] = []
             for each_video_baseinfo in each_video_baseinfo_group:
                 if show_progress:

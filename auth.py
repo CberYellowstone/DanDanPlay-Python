@@ -1,10 +1,12 @@
 import hashlib
+import time
 import uuid
-from typing import Tuple
+from typing import Optional, Tuple
 
 import jwt
 
-from database import *
+from database import regUser, vaildPassword, vaildUserIfExists
+
 
 
 def vaildLogin(username: str, password: str) -> Tuple[bool, str]:

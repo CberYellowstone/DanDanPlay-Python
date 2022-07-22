@@ -5,13 +5,13 @@ import pathlib
 import subprocess
 import threading
 import time
-from typing import Iterable, List, Sequence, Tuple, Union
+from typing import Iterable, List, Optional, Sequence, Tuple, Union
 
 import tqdm
 from pymediainfo import MediaInfo
 
-from config import *
-from database import *
+from config import CONFIG
+from database import addVideosIntoDB, getAllVideos, getAllBindedVideos
 from unit import universeThread, videoBaseInfoTuple
 
 # from var_dump import var_dump
@@ -96,7 +96,7 @@ def getVideosFromPath(folderPath: str) -> List[str]:
 
 def mulitThreadPushVideoBaseInfo2DB(video_paths:Sequence[str], tqdm_obj:Optional[tqdm.tqdm]) -> Tuple[Tuple[str, str, str, str, str], ...]:
     information_list:List[Tuple[str, str, str, str, str]] = []
-    locks = [threading.Lock() for _ in range(PUSH_VIDEO_THREAD_NUM)]
+    locks = [threading.Lock() for _ in range(CONFIG.PUSH_VIDEO_THREAD_NUM)]
     for each_path in video_paths:
         while all(lock.locked() for lock in locks):
             time.sleep(0.1)
@@ -122,7 +122,7 @@ def pushVideoBaseInfo2DB(video_path: Union[str, Sequence[str]], path_is_precheck
     else:
         faild_path = ()
     tqdm_obj = tqdm.tqdm(video_path) if show_progress else None
-    if PUSH_VIDEO_THREAD_NUM == 1:
+    if CONFIG.PUSH_VIDEO_THREAD_NUM == 1:
         information_list: List[Tuple[str, str, str, str, str]] = []
         for each_path in video_path:
             _hash, _duration, _filename, _size = getVideoBasicInformation(each_path)
@@ -137,10 +137,10 @@ def pushVideoBaseInfo2DB(video_path: Union[str, Sequence[str]], path_is_precheck
 
 
 def multiThreadCreateThumbnail(_videoBaseInfoTuples:Sequence[videoBaseInfoTuple], size:str = '400*225', show_progress:bool = False, cover:bool = False) -> None:
-    locks = [threading.Lock() for _ in range(THUMBNAIL_THREAD_NUM)]
+    locks = [threading.Lock() for _ in range(CONFIG.THUMBNAIL_THREAD_NUM)]
     tqdm_obj = tqdm.tqdm(_videoBaseInfoTuples) if show_progress else None
     for eachTuple in _videoBaseInfoTuples:
-        img_path = os.path.join(THUMBNAIL_PATH, f'{eachTuple.hash}{THUMBNAIL_SUFFIX}')
+        img_path = os.path.join(CONFIG.THUMBNAIL_PATH, f'{eachTuple.hash}{CONFIG.THUMBNAIL_SUFFIX}')
         if(not cover and os.path.exists(img_path)):
             if show_progress:
                 tqdm_obj.set_description(f'{eachTuple.fileName}')
@@ -148,7 +148,7 @@ def multiThreadCreateThumbnail(_videoBaseInfoTuples:Sequence[videoBaseInfoTuple]
             continue
         video_path:str = eachTuple.filePath
         timing:int = int(float(eachTuple.videoDuration)/5)
-        args = [FFMPEG_PATH, '-loglevel', 'quiet', '-ss', f'{timing}', '-i', video_path, '-y', '-f', THUMBNAIL_FORMAT, '-t', '1', '-r', '1', '-s', size, img_path]
+        args = [CONFIG.FFMPEG_PATH, '-loglevel', 'quiet', '-ss', f'{timing}', '-i', video_path, '-y', '-f', CONFIG.THUMBNAIL_FORMAT, '-t', '1', '-r', '1', '-s', size, img_path]
         while all(lock.locked() for lock in locks):
             time.sleep(0.1)
         lock = [lock for lock in locks if not lock.locked()][0]
@@ -161,15 +161,15 @@ def createThumbnail(_videoBaseInfoTuple: Union[videoBaseInfoTuple, Sequence[vide
         _videoBaseInfoTuple = (_videoBaseInfoTuple,)
     if show_progress:
         _videoBaseInfoTuple = tqdm.tqdm(_videoBaseInfoTuple)
-    if THUMBNAIL_THREAD_NUM == 1:
+    if CONFIG.THUMBNAIL_THREAD_NUM == 1:
         for eachTuple in _videoBaseInfoTuple:
             if show_progress:
                 _videoBaseInfoTuple.set_description(f'{eachTuple.fileName}')# type: ignore
-            img_path = os.path.join(THUMBNAIL_PATH, f'{eachTuple.hash}{THUMBNAIL_SUFFIX}')
+            img_path = os.path.join(CONFIG.THUMBNAIL_PATH, f'{eachTuple.hash}{CONFIG.THUMBNAIL_SUFFIX}')
             if(not cover and os.path.exists(img_path)):
                 continue
             video_path:str = eachTuple.filePath
             timing:int = int(float(eachTuple.videoDuration)/5)
-            subprocess.call([FFMPEG_PATH, '-loglevel', 'quiet', '-ss', f'{timing}', '-i', video_path, '-y', '-f', THUMBNAIL_FORMAT, '-t', '1', '-r', '1', '-s', size, img_path])
+            subprocess.call([CONFIG.FFMPEG_PATH, '-loglevel', 'quiet', '-ss', f'{timing}', '-i', video_path, '-y', '-f', CONFIG.THUMBNAIL_FORMAT, '-t', '1', '-r', '1', '-s', size, img_path])
     else:
         multiThreadCreateThumbnail(_videoBaseInfoTuple, size, show_progress, cover)

@@ -12,6 +12,8 @@ numpy = "*"
 tqdm = "*"
 flask-cors = "*"
 pyjwt = "*"
+pyyaml = "*"
+click = "*"
 
 [dev-packages]
 black = "*"
@@ -20,6 +22,7 @@ var-dump = "*"
 mypy = "*"
 types-requests = "*"
 line-profiler = "*"
+types-pyyaml = "*"
 
 [requires]
 python_version = "3.10"
