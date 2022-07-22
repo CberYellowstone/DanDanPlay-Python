@@ -134,9 +134,20 @@ def returnAPIComment(_hash):
 def dealAuth():
     _body = request.get_json()
     _state, _message = vaildLogin(_body['userName'], _body['password'])
-    if not _state:
-        return jsonify({"id":"","userName":"","token":"","error":_message})
-    return jsonify({"id":generateUUID(_body['userName']),"userName":_body['userName'],"token":generateToken(_body['userName']),"error":""})
+    return (
+        jsonify(
+            {
+                "id": generateUUID(_body['userName']),
+                "userName": _body['userName'],
+                "token": generateToken(_body['userName']),
+                "error": "",
+            }
+        )
+        if _state
+        else jsonify(
+            {"id": "", "userName": "", "token": "", "error": _message}
+        )
+    )
 
 
 @app.route('/api/v1/playerconfig/<_hash>')

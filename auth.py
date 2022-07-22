@@ -12,9 +12,11 @@ from database import regUser, vaildPassword, vaildUserIfExists
 def vaildLogin(username: str, password: str) -> Tuple[bool, str]:
     if not vaildUserIfExists(username):
         return False, '用户不存在'
-    if not vaildPassword(username, password):
-        return False, '密码不正确'
-    return True, '登陆成功'
+    return (
+        (True, '登陆成功')
+        if vaildPassword(username, password)
+        else (False, '密码不正确')
+    )
 
 
 def generateUUID(username: str) -> str:

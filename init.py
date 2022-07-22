@@ -24,9 +24,15 @@ class AbsPath(click.ParamType):
 
 
 def initConfig():
-    _user_configs = {}
-    for eachConfig in _default_configs.items():
-        _user_configs[eachConfig[0]] = click.prompt(eachConfig[1][1], default=eachConfig[1][0], type=AbsPath() if os.path.isabs(f'{eachConfig[1][0]}') else None)
+    _user_configs = {
+        eachConfig[0]: click.prompt(
+            eachConfig[1][1],
+            default=eachConfig[1][0],
+            type=AbsPath() if os.path.isabs(f'{eachConfig[1][0]}') else None,
+        )
+        for eachConfig in _default_configs.items()
+    }
+
     os.environ['INITING'] = 'False'
     CONFIG.new(_user_configs)
 
