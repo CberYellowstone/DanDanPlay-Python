@@ -85,12 +85,13 @@ class Config():
         assert self.THUMBNAIL_THREAD_NUM >= 1, '`THUMBNAIL_THREAD_NUM` 至少为 1'
 
     def check(self):
-        if _difference := tuple(
-            c for c in _default_configs if c not in set(self._config)
-        ):
+        # 检查配置是否齐全
+        _difference = tuple(c for c in _default_configs if c not in set(self._config))
+        if not len(_difference) == 0:
             click.echo(f'配置缺失：\n' + '、 '.join(_difference))
-            click.echo('请运行 `cli.py init` 重新进行初始化。')
+            click.echo(f'请运行 `cli.py init` 重新进行初始化。')
             exit(1)
+
     
     def reload(self):
         self.__init__()
