@@ -4,6 +4,7 @@ import uuid
 from typing import Optional, Tuple
 
 import jwt
+from config import CONFIG
 
 from database import regUser, vaildPassword, vaildUserIfExists
 
@@ -32,6 +33,8 @@ def vaildToken(token: Optional[str]) -> Tuple[bool, str]:
     '''Return: is_vaild, username or failed_message'''
     if token is None:
         return False, 'Token required'
+    if token == CONFIG.API_TOKEN:
+        return True, 'valid'
     try:
         decoded = jwt.decode(token, 'pas', algorithms=['HS256'])
         return True, decoded['name']

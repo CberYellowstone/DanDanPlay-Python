@@ -1,5 +1,6 @@
 import contextlib
 import os
+from shutil import which
 from typing import Any, Optional
 
 from var_dump import var_dump
@@ -24,6 +25,12 @@ class AbsPath(click.ParamType):
 
 
 def initConfig():
+    if CONFIG.check():
+        click.echo('配置已存在，无需初始化。\n')
+        exit(0)
+    click.echo('正在初始化配置……\n')
+    if which('ffmpeg') is None:
+        click.echo('未检测到`ffmpeg`，请确认是否安装了`ffmpeg`。')
     _user_configs = {
         eachConfig[0]: click.prompt(
             eachConfig[1][1],
@@ -32,7 +39,7 @@ def initConfig():
         )
         for eachConfig in _default_configs.items()
     }
-
+    _user_configs['API_TOKEN'] = click.prompt('请输入API访问密钥', type=str) if _user_configs['API_TOKEN_REQUIRED'] else None
     os.environ['INITING'] = 'False'
     CONFIG.new(_user_configs)
 

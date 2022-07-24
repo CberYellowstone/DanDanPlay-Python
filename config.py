@@ -30,7 +30,7 @@ _default_configs = {
     'THUMBNAIL_THREAD_NUM': (1, '缩略图创建使用线程数，若为1则禁用多线程'),
     'THUMBNAIL_INSTANT_CREATE': (True, '缩略图不存在时是否即时创建'),
     'API_TOKEN_REQUIRED': (False, 'API访问是否需要密钥')
-    }
+}
 
 
 class Config():
@@ -40,6 +40,7 @@ class Config():
     DANMU_PATH: str
     THUMBNAIL_PATH: str
     ONCE_SECRET: str
+    API_TOKEN: str
     VERSION: str = _VERSION
     DANMU_DOWNLOAD_THREAD_NUM: int
     PUSH_VIDEO_THREAD_NUM: int
@@ -51,23 +52,26 @@ class Config():
     THUMBNAIL_INSTANT_CREATE: bool
     API_TOKEN_REQUIRED: bool
 
-    _config:dict = {}
+    _config: dict = {}
+
     def __init__(self):
-        if os.environ.get('INITING', 'False') == 'True':
-            return
         try:
             with open(CONFIG_PATH, 'r') as c:
                 self._config = yaml.safe_load(c)
         except FileNotFoundError:
-            click.echo(f'找不到{CONFIG_PATH}，请先运行 `cli.py init` 进行初始化。')
+            if os.environ.get('INITING', 'False') == 'True':
+                return
+            click.echo(f'找不到{CONFIG_PATH}，请先运行 `cli.py init` 进行初始化。\n', err=True)
             exit(1)
         for i, j in self._config.items():
             setattr(self, i, j)
-        
-        self.check()
+        if os.environ.get('INITING', 'False') == 'True':
+            return
+        if not self.check():
+            exit(1)
         self.process()
         self.vaild()
-    
+
     def process(self):
         self.SELF_PATH = os.path.abspath(os.path.dirname(__file__))
         self.DB_PATH = os.path.join(self.DATA_PATH, self.DB_PATH)
@@ -76,7 +80,7 @@ class Config():
         self.THUMBNAIL_SUFFIX = '.webp' if self.THUMBNAIL_ENABLE_WEBP else '.jpg'
         self.THUMBNAIL_FORMAT = 'webp' if self.THUMBNAIL_ENABLE_WEBP else 'mjpeg'
         self.ONCE_SECRET = secrets.token_hex(32)
-    
+
     def vaild(self):
         # 检查值是否合法
         assert os.path.isabs(self.DATA_PATH), 'DATA_PATH 必须为绝对路径'
@@ -88,27 +92,31 @@ class Config():
         # 检查配置是否齐全
         _difference = tuple(c for c in _default_configs if c not in set(self._config))
         if not len(_difference) == 0:
-            click.echo(f'配置缺失：\n' + '、 '.join(_difference))
-            click.echo(f'请运行 `cli.py init` 重新进行初始化。')
-            exit(1)
+            click.echo(f'配置缺失：\n' + '、 '.join(_difference), err=True)
+            click.echo('请运行 `cli.py init` 重新进行初始化。\n', err=True)
+            return False
+        if self._config['API_TOKEN_REQUIRED'] and self._config.get('API_TOKEN', None) is None:
+            click.echo('API访问密钥缺失，请运行 `cli.py config` 进行设置。\n', err=True)
+            return False
+        return True
 
-    
     def reload(self):
         self.__init__()
-    
+
     def dump(self):
         with open(CONFIG_PATH, 'w') as c:
             yaml.safe_dump(self._config, c, default_flow_style=False)
-    
+
     def new(self, _dict: dict):
         self._config.update(_dict)
         self.dump()
         self.reload()
-    
-    # def modify(self, _key: str, _value: Any):
-    #     self._config[_key] = _value
-    #     self.dump()
-    #     self.reload()
+
+    def modify(self, _key: str, _value: Any):
+        self._config[_key] = _value
+        self.dump()
+        self.reload()
+
 
 if __name__ == 'config':
     CONFIG = Config()

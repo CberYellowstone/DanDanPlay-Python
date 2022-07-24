@@ -152,7 +152,7 @@ def dealAuth():
 
 @app.route('/api/v1/playerconfig/<_hash>')
 @checkAuth()
-def returnPlayCONFIG(_hash):
+def returnPlayConfig(_hash):
     _videoInfoTuple = getSpecificBindedVideo(_hash)
     if _videoInfoTuple[0] is None:
         return '', 404
