@@ -1,3 +1,1 @@
-from .cli import CLI
-
-CLI()
+from .__version__ import VERSION

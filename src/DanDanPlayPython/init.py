@@ -25,7 +25,7 @@ class AbsPath(click.ParamType):
 
 
 def initConfig():
-    if CONFIG.check():
+    if CONFIG.implicitCheck()[0]:
         click.echo('配置已存在，无需初始化。\n')
         exit(0)
     click.echo('正在初始化配置……\n')

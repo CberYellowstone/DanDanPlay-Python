@@ -1,18 +1,15 @@
-import hashlib
 import os
 import secrets
-import sys
-import time
 from shutil import which
-from typing import Any
-import click
+from typing import Any, Tuple
 
+import click
 import yaml
 from var_dump import var_dump
 
-from .version import VERSION as _VERSION
+from .__version__ import VERSION as _VERSION
 
-CONFIG_PATH = 'config.yml'
+CONFIG_PATH = os.path.join(os.path.expanduser('~'), '.config', 'DanDanPlay-Python', 'config.yml')
 
 
 _default_configs = {
@@ -55,6 +52,7 @@ class Config():
     _config: dict = {}
 
     def __init__(self):
+        os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
         try:
             with open(CONFIG_PATH, 'r') as c:
                 self._config = yaml.safe_load(c)
@@ -67,8 +65,7 @@ class Config():
             setattr(self, i, j)
         if os.environ.get('INITING', 'False') == 'True':
             return
-        if not self.check():
-            exit(1)
+        self.echoCheck()
         self.process()
         self.vaild()
 
@@ -88,17 +85,20 @@ class Config():
         assert isinstance(self.THUMBNAIL_ENABLE_WEBP, bool), '`THUMBNAIL_ENABLE_WEBP` 必须是布尔值'
         assert self.THUMBNAIL_THREAD_NUM >= 1, '`THUMBNAIL_THREAD_NUM` 至少为 1'
 
-    def check(self):
+    def implicitCheck(self) -> Tuple[bool, str]:
         # 检查配置是否齐全
         _difference = tuple(c for c in _default_configs if c not in set(self._config))
         if not len(_difference) == 0:
-            click.echo(f'配置缺失：\n' + '、 '.join(_difference), err=True)
-            click.echo('请运行 `cli.py init` 重新进行初始化。\n', err=True)
-            return False
+            return False, '配置缺失：\n' + '、 '.join(_difference) + '请运行 `cli.py init` 重新进行初始化。\n'
         if self._config['API_TOKEN_REQUIRED'] and self._config.get('API_TOKEN', None) is None:
-            click.echo('API访问密钥缺失，请运行 `cli.py config` 进行设置。\n', err=True)
-            return False
-        return True
+            return False, 'API访问密钥缺失，请运行 `cli.py config` 进行设置。\n'
+        return True, ''
+
+    def echoCheck(self):
+        state, message = self.implicitCheck()
+        if not state:
+            click.echo(message=message, err=True)
+            exit(1)
 
     def reload(self):
         self.__init__()
@@ -118,5 +118,5 @@ class Config():
         self.reload()
 
 
-if __name__ == 'config':
+if __name__ == 'DanDanPlayPython.config':
     CONFIG = Config()

@@ -134,4 +134,4 @@ test/
 *.sqlite3
 data
 
-config.yml
+dev/

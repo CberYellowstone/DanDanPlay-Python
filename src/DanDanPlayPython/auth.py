@@ -4,7 +4,7 @@ import uuid
 from typing import Optional, Tuple
 
 import jwt
-from config import CONFIG
+from .config import CONFIG
 
 from .database import regUser, vaildPassword, vaildUserIfExists
 
