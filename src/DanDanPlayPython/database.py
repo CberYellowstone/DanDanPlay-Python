@@ -5,8 +5,8 @@ from contextlib import closing
 from typing import Optional, Sequence, Tuple
 
 # from var_dump import var_dump
-from config import CONFIG
-from unit import videoBaseInfoTuple, videoBindInfoTuple
+from .config import CONFIG
+from .unit import videoBaseInfoTuple, videoBindInfoTuple
 
 
 def initDB():

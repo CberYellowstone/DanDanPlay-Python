@@ -23,6 +23,7 @@ mypy = "*"
 types-requests = "*"
 line-profiler = "*"
 types-pyyaml = "*"
+setuptools = "*"
 
 [requires]
 python_version = "3.10"

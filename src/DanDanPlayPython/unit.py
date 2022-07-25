@@ -7,7 +7,7 @@ from typing import Callable, Optional
 
 import tqdm
 
-from config import CONFIG
+from .config import CONFIG
 
 # from var_dump import var_dump
 

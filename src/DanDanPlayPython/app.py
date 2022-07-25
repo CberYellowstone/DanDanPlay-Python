@@ -5,12 +5,12 @@ from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 # from var_dump import var_dump
 
-from auth import *
-from config import CONFIG
-from dandanplayAPI import *
-from database import *
-from unit import *
-from video import *
+from .auth import *
+from .config import CONFIG
+from .dandanplayAPI import *
+from .database import *
+from .unit import *
+from .video import *
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)

@@ -10,7 +10,7 @@ import click
 import yaml
 from var_dump import var_dump
 
-from version import VERSION as _VERSION
+from .version import VERSION as _VERSION
 
 CONFIG_PATH = 'config.yml'
 

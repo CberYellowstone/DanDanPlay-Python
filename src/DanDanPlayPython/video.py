@@ -10,9 +10,9 @@ from typing import Iterable, List, Optional, Sequence, Tuple, Union
 import tqdm
 from pymediainfo import MediaInfo
 
-from config import CONFIG
-from database import addVideosIntoDB, getAllVideos, getAllBindedVideos
-from unit import universeThread, videoBaseInfoTuple
+from .config import CONFIG
+from .database import addVideosIntoDB, getAllVideos, getAllBindedVideos
+from .unit import universeThread, videoBaseInfoTuple
 
 # from var_dump import var_dump
 

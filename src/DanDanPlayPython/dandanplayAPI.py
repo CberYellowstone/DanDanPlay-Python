@@ -9,9 +9,9 @@ import requests
 import tqdm
 import urllib3
 
-from config import CONFIG
-from database import addBindingsIntoDB, getAllUnBindedVideos
-from unit import universeThread, videoBaseInfoTuple, videoBindInfoTuple
+from .config import CONFIG
+from .database import addBindingsIntoDB, getAllUnBindedVideos
+from .unit import universeThread, videoBaseInfoTuple, videoBindInfoTuple
 
 # from var_dump import var_dump
 

@@ -6,8 +6,8 @@ from typing import Any, Optional
 from var_dump import var_dump
 import click
 
-from config import CONFIG, _default_configs
-from database import initDB
+from .config import CONFIG, _default_configs
+from .database import initDB
 
 
 def delAll():
