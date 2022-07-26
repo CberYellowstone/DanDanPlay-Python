@@ -27,7 +27,7 @@ def checkAuth(pass_name:bool = False):
                 return func(*args, **kwargs)
             _token = request.headers.get('Authorization', '').lstrip('Bearer').lstrip()
             _state, _usernameOrMessage = vaildToken(_token)
-            _state2 = request.args.get('token', '') == CONFIG.ONCE_SECRET
+            _state2 = request.args.get('token', '') in (CONFIG.ONCE_SECRET, CONFIG.API_TOKEN)
             if not any((_state, _state2)):
                 return return401(*args, **kwargs)
             if pass_name:
@@ -112,7 +112,11 @@ def after_request(response):
 @checkAuth()
 def returnStream(_hash):
     _videoBaseInfoTuple = getVideoFromDB(_hash)
-    return send_file(_videoBaseInfoTuple.filePath) if (_videoBaseInfoTuple is not None) else ('', 404)
+    if _videoBaseInfoTuple is not None:
+        updateLastWatchTime(_videoBaseInfoTuple.hash, int(time.time()))
+        return send_file(_videoBaseInfoTuple.filePath)
+    else:
+        return ('', 404)
 
 
 @app.route('/api/v1/comment/id/<_hash>')

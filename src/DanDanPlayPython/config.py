@@ -1,4 +1,3 @@
-import itertools
 import os
 import secrets
 from shutil import which
@@ -8,8 +7,7 @@ import click
 import yaml
 from var_dump import var_dump
 
-from .unit import AbsPath
-
+from .unit import *
 from .__version__ import VERSION as _VERSION
 
 CONFIG_PATH = os.path.join(os.path.expanduser('~'), '.config', 'DanDanPlay-Python', 'config.yml')
@@ -106,9 +104,9 @@ class Config():
         # 检查配置是否齐全
         _difference = tuple(c for c in _default_configs if c not in set(self._config))
         if not len(_difference) == 0:
-            return False, '配置缺失：\n' + '、 '.join(_difference) + '请运行 `cli.py init` 重新进行初始化。\n'
+            return False, '配置缺失：\n' + '、 '.join(_difference) + '请运行 `dandanplay-python init` 重新进行初始化。\n'
         if self._config['API_TOKEN_REQUIRED'] and self._config.get('API_TOKEN', None) is None and os.environ.get('CONFIGING', 'False') != 'True':
-            return False, 'API访问密钥缺失，请运行 `cli.py config` 进行设置。\n'
+            return False, 'API访问密钥缺失，请运行 `dandanplay-python config` 进行设置。\n'
         return True, ''
 
     def echoCheck(self):

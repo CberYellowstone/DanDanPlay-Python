@@ -14,6 +14,7 @@ import click
 def CLI():
     pass
 
+
 @CLI.command()
 def init():
     '''执行初始化操作'''
@@ -21,13 +22,15 @@ def init():
     from .init import init as _init
     _init()
 
+
 @CLI.command()
 @click.option('--host', '-h', default='0.0.0.0', help='监听地址')
 @click.option('--port', '-p', default=5000, help='监听端口')
 def run(host, port):
-    '''运行 API 服务， 可选参数：--host（默认为0.0.0.0），--port（默认为5000）'''
+    '''运行 API 服务，可选参数：--host（默认为0.0.0.0），--port（默认为5000）'''
     from .app import run as _run
     _run(host, port)
+
 
 @CLI.command()
 def config():
@@ -35,6 +38,14 @@ def config():
     os.environ['CONFIGING'] = 'True'
     from .config import CONFIG
     CONFIG.edit()
+
+
+@CLI.command()
+@click.argument('path')
+def add(path: str):
+    '''向数据库中增加视频，参数：Path（可为单文件路径或目录路径）'''
+    from .video import pushVideoBaseInfo2DB
+    pushVideoBaseInfo2DB(path, show_progress=True, is_dir=os.path.isdir(path))
 
 
 if __name__ == '__main__':

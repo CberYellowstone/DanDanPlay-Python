@@ -33,6 +33,8 @@ def initConfig():
     _user_configs['API_TOKEN'] = click.prompt('请输入API访问密钥', type=str) if _user_configs['API_TOKEN_REQUIRED'] else None
     os.environ['INITING'] = 'False'
     CONFIG.new(_user_configs)
+    click.clear()
+    click.echo('成功初始化配置！尝试执行 `dandanplay add <file>` 添加视频吧！')
 
 
 def initFolder():

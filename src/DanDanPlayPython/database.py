@@ -151,7 +151,7 @@ def getLastWatchTime(hash: str) -> int:
 
 
 # time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(1657941885))
-def updateLastWatchTime(hash: str, lastWatchTime: int = int(time.time())) -> None:
+def updateLastWatchTime(hash: str, lastWatchTime: int) -> None:
     with closing(sqlite3.connect(CONFIG.DB_PATH)) as connection:
         with closing(connection.cursor()) as cursor:
             cursor.execute("UPDATE Video SET lastWatchTime=? WHERE hash=?", (lastWatchTime, hash))
