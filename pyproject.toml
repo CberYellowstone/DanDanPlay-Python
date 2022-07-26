@@ -34,6 +34,9 @@ dependencies = [
 [tool.setuptools.dynamic]
 version = {attr = "DanDanPlayPython.VERSION"}
 
+[project.scripts]
+dandanplay-python = "DanDanPlayPython.cli:CLI"
+
 [project.urls]
 home-page = "https://github.com/CberYellowstone/DanDanPlay-Python"
 bug-tracker = "https://github.com/CberYellowstone/DanDanPlay-Python/issues"
