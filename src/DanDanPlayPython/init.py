@@ -1,27 +1,18 @@
 import contextlib
 import os
 from shutil import which
-from typing import Any, Optional
 
-from var_dump import var_dump
 import click
+from var_dump import var_dump
 
 from .config import CONFIG, _default_configs
 from .database import initDB
+from .unit import AbsPath
 
 
 def delAll():
     with contextlib.suppress(FileNotFoundError):
         os.remove(CONFIG.DATA_PATH)
-
-class AbsPath(click.ParamType):
-    name = 'AbsPath'
-    def __init__(self) -> None:
-        super().__init__()
-    def convert(self, value: Any, param: Optional[click.Parameter], ctx: Optional[click.Context]) -> Any:
-        if not os.path.isabs(value):
-            self.fail('请输入绝对路径', param, ctx)
-        return super().convert(value, param, ctx)
 
 
 def initConfig():
@@ -35,7 +26,7 @@ def initConfig():
         eachConfig[0]: click.prompt(
             eachConfig[1][1],
             default=eachConfig[1][0],
-            type=AbsPath() if os.path.isabs(f'{eachConfig[1][0]}') else None,
+            type=AbsPath() if os.path.isabs(f'{eachConfig[1][0]}') else None
         )
         for eachConfig in _default_configs.items()
     }

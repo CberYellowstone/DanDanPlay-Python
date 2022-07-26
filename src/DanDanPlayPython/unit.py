@@ -3,11 +3,12 @@ import os
 import threading
 import xml.etree.cElementTree as ET
 from collections import namedtuple
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
+import click
 import tqdm
 
-from .config import CONFIG
+from .config import *
 
 # from var_dump import var_dump
 
@@ -28,6 +29,18 @@ class universeThread(threading.Thread):
         if self.tqdm_obj is not None:
             self.tqdm_obj.update()
         self.lock.release()
+
+
+class AbsPath(click.ParamType):
+    name = 'AbsPath'
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    def convert(self, value: Any, param: Optional[click.Parameter], ctx: Optional[click.Context]) -> Any:
+        if not os.path.isabs(value):
+            self.fail('请输入绝对路径', param, ctx)
+        return super().convert(value, param, ctx)
 
 
 def covert2XML(episodeId: int) -> str:

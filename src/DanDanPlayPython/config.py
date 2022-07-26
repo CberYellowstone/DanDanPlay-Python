@@ -1,11 +1,14 @@
+import itertools
 import os
 import secrets
 from shutil import which
-from typing import Any, Tuple
+from typing import Any, Optional, Tuple
 
 import click
 import yaml
 from var_dump import var_dump
+
+from .unit import AbsPath
 
 from .__version__ import VERSION as _VERSION
 
@@ -28,6 +31,20 @@ _default_configs = {
     'THUMBNAIL_INSTANT_CREATE': (True, '缩略图不存在时是否即时创建'),
     'API_TOKEN_REQUIRED': (False, 'API访问是否需要密钥')
 }
+
+class ConfigNum(click.ParamType):
+    name = 'ConfigNum'
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    def convert(self, value: Any, param: Optional[click.Parameter], ctx: Optional[click.Context]) -> Any:
+        if not any((value.isdigit(), value == '-1')):
+            self.fail('输入有误，请重试')
+        if not int(value) in range(-1, len(_default_configs)+1):
+            self.fail(f'序号超出范围，请输入0-{len(_default_configs)-1}', param, ctx)
+        value = int(value)
+        return super().convert(value, param, ctx)
 
 
 class Config():
@@ -90,7 +107,7 @@ class Config():
         _difference = tuple(c for c in _default_configs if c not in set(self._config))
         if not len(_difference) == 0:
             return False, '配置缺失：\n' + '、 '.join(_difference) + '请运行 `cli.py init` 重新进行初始化。\n'
-        if self._config['API_TOKEN_REQUIRED'] and self._config.get('API_TOKEN', None) is None:
+        if self._config['API_TOKEN_REQUIRED'] and self._config.get('API_TOKEN', None) is None and os.environ.get('CONFIGING', 'False') != 'True':
             return False, 'API访问密钥缺失，请运行 `cli.py config` 进行设置。\n'
         return True, ''
 
@@ -112,10 +129,23 @@ class Config():
         self.dump()
         self.reload()
 
-    def modify(self, _key: str, _value: Any):
-        self._config[_key] = _value
+    def edit(self):
+        api_token = ('API_TOKEN', (self._config.get('API_TOKEN', None), 'API访问密钥'))
+        # var_dump(list(enumerate(_default_configs.items()))); var_dump(api_token);exit()
+        click.echo('\n'.join(f"{n} - {j[1][1].split('，')[0]}：{self._config[j[0]]}" for n, j in (*enumerate(_default_configs.items()), (len(_default_configs), api_token))) + '\n')
+        num = click.prompt('请输入配置项前的编号进行选择，输入-1退出', default=-1, show_default=False, value_proc=ConfigNum())
+        click.clear()
+        if num == -1:
+            click.echo('已退出配置！')
+            return
+        _items = (*_default_configs.items(), api_token)
+        value = click.prompt(_items[num][1][1], default=_items[num][1][0], type=AbsPath() if os.path.isabs(f'{_items[num][1][0]}') else None)
+        self._config[_items[num][0]] = value
         self.dump()
         self.reload()
+        click.echo(f'{_items[num][0]} 已更新为：{self._config[_items[num][0]]}')
+        os.environ['CONFIGING'] = 'False'
+
 
 
 if __name__ == 'DanDanPlayPython.config':
