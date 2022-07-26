@@ -42,10 +42,22 @@ def config():
 
 @CLI.command()
 @click.argument('path')
-def add(path: str):
-    '''向数据库中增加视频，参数：Path（可为单文件路径或目录路径）'''
+@click.option('--show-faild', 'show_faild', flag_value=True)
+@click.option('--silent', 'silent', flag_value=True)
+def add(path: str, show_faild:bool = False, silent:bool = False):
+    '''向数据库中增加视频，参数：Path（可为单文件路径或目录路径），可选参数：--show-faild（展示失败项）、--silent（静默输出）'''
     from .video import pushVideoBaseInfo2DB
-    pushVideoBaseInfo2DB(path, show_progress=True, is_dir=os.path.isdir(path))
+    from .database import getAllVideos
+    bf = len(getAllVideos())
+    is_dir = os.path.isdir(path)
+    state, faileds = pushVideoBaseInfo2DB(path, show_progress=((not silent) and is_dir), is_dir=is_dir)
+    success = len(getAllVideos()) - bf
+    if silent:
+        return
+    click.echo(f'\n本次成功添加 {success} 个视频，' + ('无失败项目。' if state else f'其中跳过 {len(faileds)} 个。\n') + ('' if show_faild else '\n若要查看跳过项目，请附带 --show-faild'))
+    if show_faild:
+        click.echo('跳过的项目：\n'+'\n'.join(faileds)+'\n')
+
 
 
 if __name__ == '__main__':

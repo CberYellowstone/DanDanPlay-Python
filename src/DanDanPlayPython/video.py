@@ -118,9 +118,9 @@ def pushVideoBaseInfo2DB(video_path: Union[str, Sequence[str]], path_is_precheck
         video_path = (video_path,)
     video_path = fiddlerExistVideoPaths(video_path)
     if not path_is_prechecked:
-        video_path, faild_path = fiddlerVideosFromFiles(video_path)
+        video_path, failed_path = fiddlerVideosFromFiles(video_path)
     else:
-        faild_path = ()
+        failed_path = ()
     tqdm_obj = tqdm.tqdm(video_path) if show_progress else None
     if CONFIG.PUSH_VIDEO_THREAD_NUM == 1:
         information_list: List[Tuple[str, str, str, str, str]] = []
@@ -133,7 +133,7 @@ def pushVideoBaseInfo2DB(video_path: Union[str, Sequence[str]], path_is_precheck
     else:
         information_list = mulitThreadPushVideoBaseInfo2DB(video_path, tqdm_obj)# type: ignore
     addVideosIntoDB(information_list)
-    return not bool(faild_path), faild_path
+    return not bool(failed_path), failed_path
 
 
 def multiThreadCreateThumbnail(_videoBaseInfoTuples:Sequence[videoBaseInfoTuple], size:str = '400*225', show_progress:bool = False, cover:bool = False) -> None:
