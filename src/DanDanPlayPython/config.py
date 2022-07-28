@@ -74,7 +74,7 @@ class Config():
         except FileNotFoundError:
             if os.environ.get('INITING', 'False') == 'True':
                 return
-            click.echo(f'找不到{CONFIG_PATH}，请先运行 `cli.py init` 进行初始化。\n', err=True)
+            click.echo(click.style(f'找不到{CONFIG_PATH}，请先运行 `cli.py init` 进行初始化。\n', fg='yellow'), err=True)
             exit(1)
         for i, j in self._config.items():
             setattr(self, i, j)

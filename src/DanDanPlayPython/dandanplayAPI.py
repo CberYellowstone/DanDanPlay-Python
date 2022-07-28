@@ -14,7 +14,7 @@ from .config import CONFIG
 from .database import addBindingsIntoDB, getAllUnBindedVideos
 from .unit import universeThread, videoBaseInfoTuple, videoBindInfoTuple
 
-# from var_dump import var_dump
+from var_dump import var_dump
 
 
 urllib3.disable_warnings()
@@ -41,7 +41,7 @@ def queryDandanPlay(_videoBaseInfoTuple: videoBaseInfoTuple) -> Tuple[bool, Opti
         except requests.exceptions.ConnectTimeout:
             time.sleep(1)
             continue
-        except requests.exceptions.InvalidJSONError:
+        except json.JSONDecodeError:
             time.sleep(1)
             continue
     else:
@@ -141,7 +141,7 @@ def multiThreadBindVideosIfIsMached(each_video_baseinfo_group: Sequence[videoBas
 
 
 # TODO: Add Logging
-def bindVideosIfIsMatched(show_progress=False) -> Tuple[tuple, tuple]:
+def bindVideosIfIsMatched(show_progress:bool = False, only_ignore:bool = False) -> Tuple[tuple, tuple]:
     '''Try to search the not-binded videos in the DB,\n
     if Dandanplay API return a 'isMatched' flag,\n
     then auto bind the video. Otherwise, return it in the not-binded videos.
@@ -150,7 +150,7 @@ def bindVideosIfIsMatched(show_progress=False) -> Tuple[tuple, tuple]:
     binded_videos = []
     need_manual_bind_videos = []
     all_videos = [videoBaseInfoTuple._make(
-        eachBaseInfo) for eachBaseInfo in getAllUnBindedVideos()]
+        eachBaseInfo) for eachBaseInfo in getAllUnBindedVideos(only_ignore)]
     tqdm_obj = tqdm.tqdm(all_videos) if show_progress else None
 
     for each_video_baseinfo_group in [all_videos[i:i + CONFIG.MATCH_VIDEO_SPLIT_NUM] for i in range(0, len(all_videos), CONFIG.MATCH_VIDEO_SPLIT_NUM)]:
@@ -193,11 +193,13 @@ def covert2XML(episodeId: int) -> str:
             ET.SubElement(root, 'd', {'p':f'{parameters[0]},{parameters[1]},25,{parameters[2]},-639093600,0,0,0'}).text = eachDanmu['m']
     return ET.tostring(root, encoding="utf-8", xml_declaration=True).decode("utf-8")
 
+
 def covert2JSON(episodeId: int) -> str:
     with open(os.path.join(CONFIG.DANMU_PATH, f'{episodeId}.json'), 'r', encoding='utf-8') as f:
         _json = json.loads(f.read())
         _list = [[float(eachDanmu['p'].split(',')[0]), 1 if int(eachDanmu['p'].split(',')[1]) == 5 else 0, int(eachDanmu['p'].split(',')[2]), eachDanmu['p'].split(',')[3], eachDanmu['m']] for eachDanmu in _json['comments']]
         return json.dumps({'code':0, 'data':_list})
+
 
 def covertDanmu(episodeId: int, type:str) -> str:
     '''type: "DanDanPlay-Android" or "Web"'''
@@ -207,3 +209,25 @@ def covertDanmu(episodeId: int, type:str) -> str:
         return covert2JSON(episodeId)
     else:
         raise Exception('type error')
+
+
+def searchDanDanPlay(key_word:str) -> Tuple[bool, Tuple[videoBindInfoTuple, ...]]:
+    '''Iuput a key word, and return the result from dandanplay-api. \n\nReturn: hasMore: bool, Tuple[videoBindInfoTuple]'''
+    _apiurl = f'https://api.acplay.net/api/v2/search/episodes?anime={html.escape(key_word)}&episode='
+    for _ in range(3):
+        #TODO: Logging
+        try:
+            _context = requests.get(_apiurl, verify=False)
+            _dict = json.loads(html.unescape(_context.content.decode('utf-8')))
+            break
+        except requests.exceptions.ConnectTimeout:
+            time.sleep(1)
+            continue
+        except requests.exceptions.InvalidJSONError:
+            time.sleep(1)
+            continue
+    else:
+        return False, () #type: ignore
+    _hasMore:bool = _dict['hasMore']
+    _videoBindInfoTuples = tuple(videoBindInfoTuple(_eachDict['animeId'], _episodes['episodeId'], _eachDict['animeTitle'], _episodes['episodeTitle'], _eachDict['type'], _eachDict['typeDescription']) for _eachDict in _dict['animes'] for _episodes in _eachDict['episodes'])
+    return _hasMore, _videoBindInfoTuples

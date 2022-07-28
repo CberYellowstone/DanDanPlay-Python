@@ -17,11 +17,11 @@ def delAll():
 
 def initConfig():
     if CONFIG.implicitCheck()[0]:
-        click.echo('配置已存在，无需初始化。\n')
+        click.echo(click.style('配置已存在，无需初始化。\n', fg='yellow'))
         exit(0)
     click.echo('正在初始化配置……\n')
     if which('ffmpeg') is None:
-        click.echo('未检测到`ffmpeg`，请确认是否安装了`ffmpeg`。')
+        click.echo(click.style('未检测到`ffmpeg`，请确认是否安装了`ffmpeg`。', fg='yellow'))
     _user_configs = {
         eachConfig[0]: click.prompt(
             eachConfig[1][1],

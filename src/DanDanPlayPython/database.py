@@ -12,7 +12,7 @@ from .unit import videoBaseInfoTuple, videoBindInfoTuple
 def initDB():
     with closing(sqlite3.connect(CONFIG.DB_PATH)) as connection:
         with closing(connection.cursor()) as cursor:
-            cursor.execute("CREATE TABLE IF NOT EXISTS Video (hash TEXT PRIMARY KEY, fileName TEXT, filePath TEXT, fileSize TEXT, videoDuration TEXT, lastWatchTime INTEGER DEFAULT -1)")
+            cursor.execute("CREATE TABLE IF NOT EXISTS Video (hash TEXT PRIMARY KEY, fileName TEXT, filePath TEXT, fileSize TEXT, videoDuration TEXT, lastWatchTime INTEGER DEFAULT -1, ignore BOOLEAN DEFAULT 0)")
             cursor.execute("CREATE TABLE IF NOT EXISTS Binding (hash TEXT PRIMARY KEY, animeId INTEGER, episodeId INTEGER, animeTitle TEXT, episodeTitle TEXT, type TEXT, typeDescription TEXT)")
             cursor.execute("CREATE TABLE IF NOT EXISTS Auth (username TEXT PRIMARY KEY, password TEXT)")
             connection.commit()
@@ -126,12 +126,11 @@ def getSpecificBindedVideo(hash: str) -> Tuple[Tuple[videoBaseInfoTuple, videoBi
             return (videoBaseInfoTuple(*_fetch[:5]), videoBindInfoTuple(*_fetch[-6:]), _fetch[5]),
 
 
-
-def getAllUnBindedVideos() -> Tuple[videoBaseInfoTuple, ...]:
+def getAllUnBindedVideos(including_ignore:bool = False) -> Tuple[videoBaseInfoTuple, ...]:
     '''videoBaseInfoTuple: [0] hash, [1] fileName, [2] filePath, [3] fileSize, [4] videoDuration'''
     with closing(sqlite3.connect(CONFIG.DB_PATH)) as connection:
         with closing(connection.cursor()) as cursor:
-            cursor.execute("SELECT * FROM Video WHERE hash NOT IN (SELECT hash FROM Binding)")
+            cursor.execute("SELECT * FROM Video WHERE hash NOT IN (SELECT hash FROM Binding) and ignore=?", (1 if including_ignore else 0,))
             return tuple(videoBaseInfoTuple._make(eachTuple[:5]) for eachTuple in cursor.fetchall())
 
 
@@ -168,6 +167,13 @@ def clearBrokenVideo() -> Tuple[videoBaseInfoTuple, ...]:
                 cursor.execute("DELETE FROM Binding WHERE Binding.hash NOT IN (SELECT Video.hash FROM Video)", (broken_videoBaseInfoTuples.hash,))
             connection.commit()
     return broken_videoBaseInfoTuples
+
+
+def ignoreVideo(hash: str, state:bool = True) -> None:
+    with closing(sqlite3.connect(CONFIG.DB_PATH)) as connection:
+        with closing(connection.cursor()) as cursor:
+            cursor.execute("UPDATE Video SET ignore=? WHERE hash=?", (1 if state else 0, hash))
+            connection.commit()
 
 
 def vaildUserIfExists(user: str) -> bool:

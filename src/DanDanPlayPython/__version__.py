@@ -1,2 +1,2 @@
 # Major.Minor.Maintenance.Build
-VERSION = '0.0.1.17'
+VERSION = '0.0.1.18'
