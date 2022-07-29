@@ -39,7 +39,7 @@ class ConfigNum(click.ParamType):
     def convert(self, value: Any, param: Optional[click.Parameter], ctx: Optional[click.Context]) -> Any:
         if not any((value.isdigit(), value == '-1')):
             self.fail('输入有误，请重试')
-        if not int(value) in range(-1, len(_default_configs)+1):
+        if int(value) not in range(-1, len(_default_configs) + 1):
             self.fail(f'序号超出范围，请输入0-{len(_default_configs)-1}', param, ctx)
         value = int(value)
         return super().convert(value, param, ctx)
@@ -101,9 +101,9 @@ class Config():
         assert self.THUMBNAIL_THREAD_NUM >= 1, '`THUMBNAIL_THREAD_NUM` 至少为 1'
 
     def implicitCheck(self) -> Tuple[bool, str]:
-        # 检查配置是否齐全
-        _difference = tuple(c for c in _default_configs if c not in set(self._config))
-        if not len(_difference) == 0:
+        if _difference := tuple(
+            c for c in _default_configs if c not in set(self._config)
+        ):
             return False, '配置缺失：\n' + '、 '.join(_difference) + '请运行 `dandanplay-python init` 重新进行初始化。\n'
         if self._config['API_TOKEN_REQUIRED'] and self._config.get('API_TOKEN', None) is None and os.environ.get('CONFIGING', 'False') != 'True':
             return False, 'API访问密钥缺失，请运行 `dandanplay-python config` 进行设置。\n'

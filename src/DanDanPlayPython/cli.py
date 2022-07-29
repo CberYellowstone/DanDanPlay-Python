@@ -72,7 +72,7 @@ class SN(click.ParamType):
             return super().convert(value, param, ctx)
         if not value.isdigit():
             self.fail('输入有误，请重试')
-        if not int(value) in range(0, self.scope):
+        if int(value) not in range(self.scope):
             self.fail(f'序号超出范围，请输入0-{self.scope}', param, ctx)
         value = int(value)
         return super().convert(value, param, ctx)

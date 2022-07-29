@@ -112,11 +112,10 @@ def after_request(response):
 @checkAuth()
 def returnStream(_hash):
     _videoBaseInfoTuple = getVideoFromDB(_hash)
-    if _videoBaseInfoTuple is not None:
-        updateLastWatchTime(_videoBaseInfoTuple.hash, int(time.time()))
-        return send_file(_videoBaseInfoTuple.filePath)
-    else:
+    if _videoBaseInfoTuple is None:
         return ('', 404)
+    updateLastWatchTime(_videoBaseInfoTuple.hash, int(time.time()))
+    return send_file(_videoBaseInfoTuple.filePath)
 
 
 @app.route('/api/v1/comment/id/<_hash>')
