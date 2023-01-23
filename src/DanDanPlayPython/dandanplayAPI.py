@@ -24,7 +24,7 @@ def queryDandanPlay(_videoBaseInfoTuple: videoBaseInfoTuple) -> Tuple[bool, Opti
     '''If matched, return a tuple of (True, videoBindInfoTuple),\n 
     otherwise return a tuple of (False, Tuple[videoBindInfoTuple] | None)
     '''
-    _apiurl = 'https://api.acplay.net/api/v2/match'
+    _apiurl = 'https://api.dandanplay.net/api/v2/match'
     _data = {
         "fileName": _videoBaseInfoTuple.fileName,
         "fileHash": _videoBaseInfoTuple.hash,
@@ -57,7 +57,7 @@ def queryDandanPlay(_videoBaseInfoTuple: videoBaseInfoTuple) -> Tuple[bool, Opti
 def singleThreadDownloadDanmu(_from: int, with_related:bool, ch_convert:int, skips:List, eachVideoBindInfoTuple:videoBindInfoTuple, danmu_file_path) -> None:
     for _ in range(3):
         try:
-            _apiurl = f'https://api.acplay.net/api/v2/comment/{eachVideoBindInfoTuple.episodeId}?from={_from}&withRelated={with_related}&chConvert={ch_convert}'
+            _apiurl = f'https://api.dandanplay.net/api/v2/comment/{eachVideoBindInfoTuple.episodeId}?from={_from}&withRelated={with_related}&chConvert={ch_convert}'
             _rep = requests.get(_apiurl, verify=False)
             _rep.json()
             break
@@ -213,7 +213,7 @@ def covertDanmu(episodeId: int, type:str) -> str:
 
 def searchDanDanPlay(key_word:str) -> Tuple[bool, Tuple[videoBindInfoTuple, ...]]:
     '''Iuput a key word, and return the result from dandanplay-api. \n\nReturn: hasMore: bool, Tuple[videoBindInfoTuple]'''
-    _apiurl = f'https://api.acplay.net/api/v2/search/episodes?anime={html.escape(key_word)}&episode='
+    _apiurl = f'https://api.dandanplay.net/api/v2/search/episodes?anime={html.escape(key_word)}&episode='
     for _ in range(3):
         #TODO: Logging
         try:
