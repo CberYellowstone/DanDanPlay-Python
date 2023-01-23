@@ -57,7 +57,7 @@ def getVideoDuration(video_path: str) -> int:
         _videoinfo = MediaInfo.parse(video_path)
     except FileNotFoundError:
         return -1
-    return int(float(_videoinfo.video_tracks[0].duration)/1000)
+    return int(float(_videoinfo.video_tracks[0].duration)/1000)  # type: ignore
 
 
 def getFileName(path: str, with_extension: bool = False) -> str:
@@ -76,7 +76,7 @@ def getFileSize(path):
         return -1
 
 
-def getVideoBasicInformation(each_path: str, callback_list:list = None) -> Tuple[str, str, str, str]:
+def getVideoBasicInformation(each_path: str, callback_list:list = None) -> Tuple[str, str, str, str]: # type: ignore
     '''Return a tuple of (hash, duration, size)'''
     _hash = getVideoHash(each_path)
     _duration = getVideoDuration(each_path)
@@ -128,8 +128,8 @@ def pushVideoBaseInfo2DB(video_path: Union[str, Sequence[str]], path_is_precheck
             _hash, _duration, _filename, _size = getVideoBasicInformation(each_path)
             information_list.append((_hash, _filename, each_path, _size, _duration))
             if show_progress:
-                tqdm_obj.set_description(_filename)
-                tqdm_obj.update()
+                tqdm_obj.set_description(_filename)  # type: ignore
+                tqdm_obj.update()  # type: ignore
     else:
         information_list = mulitThreadPushVideoBaseInfo2DB(video_path, tqdm_obj)# type: ignore
     addVideosIntoDB(information_list)
@@ -143,8 +143,8 @@ def multiThreadCreateThumbnail(_videoBaseInfoTuples:Sequence[videoBaseInfoTuple]
         img_path = os.path.join(CONFIG.THUMBNAIL_PATH, f'{eachTuple.hash}{CONFIG.THUMBNAIL_SUFFIX}')
         if(not cover and os.path.exists(img_path)):
             if show_progress:
-                tqdm_obj.set_description(f'{eachTuple.fileName}')
-                tqdm_obj.update()
+                tqdm_obj.set_description(f'{eachTuple.fileName}')  # type: ignore
+                tqdm_obj.update()  # type: ignore
             continue
         video_path:str = eachTuple.filePath
         timing:int = int(float(eachTuple.videoDuration)/5)

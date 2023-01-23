@@ -67,6 +67,7 @@ def singleThreadDownloadDanmu(_from: int, with_related:bool, ch_convert:int, ski
             continue
     else:
         skips.append(eachVideoBindInfoTuple)
+        return
     try:
         _context = _rep.content.decode('utf-8')
         with open(danmu_file_path, 'w', encoding='utf-8') as f:
@@ -106,7 +107,7 @@ def downloadDanmuFromDandanPlay(_videoBindInfoTuple: Union[videoBindInfoTuple, S
     if CONFIG.DANMU_DOWNLOAD_THREAD_NUM != 1:
         return multiThreadDownloadDanmuFromDandanPlay(_videoBindInfoTuple, _from, with_related, ch_convert, update, show_progress)
     if show_progress:
-        _videoBindInfoTuple = tqdm.tqdm(_videoBindInfoTuple)
+        _videoBindInfoTuple = tqdm.tqdm(_videoBindInfoTuple)  # type: ignore
     skips: List[videoBindInfoTuple] = []
     for eachVideoBindInfoTuple in _videoBindInfoTuple:
         if show_progress:
@@ -158,8 +159,8 @@ def bindVideosIfIsMatched(show_progress:bool = False, only_ignore:bool = False) 
             videoBindInfoTuples: List[Tuple[str, videoBindInfoTuple]] = []
             for each_video_baseinfo in each_video_baseinfo_group:
                 if show_progress:
-                    tqdm_obj.set_description(f'{each_video_baseinfo.fileName}')
-                    tqdm_obj.update()
+                    tqdm_obj.set_description(f'{each_video_baseinfo.fileName}')  # type: ignore
+                    tqdm_obj.update()  # type: ignore
 
                 _is_matched, _matches = queryDandanPlay(each_video_baseinfo)
                 if _is_matched:
